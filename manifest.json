@@ -1,0 +1,16 @@
+{
+  "name": "车费宝 - 车险保费计算器",
+  "short_name": "车费宝",
+  "description": "车险保费手续费计算器，支持 AI 报价单识别",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#FDF0EB",
+  "theme_color": "#C8604A",
+  "orientation": "portrait",
+  "lang": "zh-CN",
+  "icons": [
+    { "src": "icons/icon-192.svg", "sizes": "192x192", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icons/icon-512.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icons/icon-512.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
