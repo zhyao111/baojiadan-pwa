@@ -168,6 +168,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const confirmOk = $('#confirmOk');
 
   // ====== Tab Switching ======
+  const headerTitle = $('.header-title');
+  const tabTitles = { tabCalc: '计算', tabSettings: '设置' };
+
   navItems.forEach((item) => {
     item.addEventListener('click', () => {
       const targetTab = item.dataset.tab;
@@ -177,6 +180,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
       tabContents.forEach((t) => t.classList.remove('active'));
       document.getElementById(targetTab).classList.add('active');
+
+      // 更新标题
+      headerTitle.textContent = tabTitles[targetTab] || '报价单';
 
       // Refresh data when switching to settings tab
       if (targetTab === 'tabSettings') {
