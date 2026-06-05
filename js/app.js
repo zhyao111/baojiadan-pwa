@@ -2404,6 +2404,10 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   btnAddDualModel.addEventListener('click', async () => {
+    if (selectDualProvider.disabled) {
+      showToast('暂无可选择的供应商');
+      return;
+    }
     const val = selectDualProvider.value;
     if (!val) { showToast('请选择供应商和模型'); return; }
     const [providerId, model] = val.split('|||');
