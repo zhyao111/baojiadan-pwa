@@ -199,6 +199,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ====== Calculate ======
+  let lastCalculatedData = null;
+
   btnCalculate.addEventListener('click', () => {
     const data = getFormData();
 
@@ -235,9 +237,27 @@ document.addEventListener('DOMContentLoaded', () => {
     // 重新获取数据（包含新填入的费率）
     const newData = getFormData();
 
+    // 如果数据没有改动，直接计算不弹窗
+    if (lastCalculatedData && isSameData(lastCalculatedData, newData)) {
+      doCalculate(newData);
+      return;
+    }
+
     // 弹出确认框，让用户核对数据
     showConfirmDialog(newData);
   });
+
+  function isSameData(a, b) {
+    return a.company === b.company &&
+      a.plate === b.plate &&
+      a.compulsoryAmount === b.compulsoryAmount &&
+      a.compulsoryRate === b.compulsoryRate &&
+      a.commercialAmount === b.commercialAmount &&
+      a.commercialRate === b.commercialRate &&
+      a.nonVehicleAmount === b.nonVehicleAmount &&
+      a.nonVehicleRate === b.nonVehicleRate &&
+      a.vehicleTax === b.vehicleTax;
+  }
 
   function parseQuickRate(str) {
     // 支持 / 或 - 或 , 或 空格 分隔
@@ -289,11 +309,7 @@ document.addEventListener('DOMContentLoaded', () => {
       confirmViewImg.removeEventListener('click', onViewImg);
     };
     const onViewImg = () => {
-      confirmOverlay.style.display = 'none';
-      confirmOk.removeEventListener('click', onOk);
-      confirmCancel.removeEventListener('click', onCancel);
-      confirmViewImg.removeEventListener('click', onViewImg);
-      // 打开图片查看器
+      // 不关闭确认弹窗，直接打开图片查看器覆盖在上面
       updateBaseSize();
       resetViewer();
       imgViewerImg.src = imgPreview.src;
@@ -305,6 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function doCalculate(data) {
+    lastCalculatedData = { ...data };
     const results = calculate(data);
     displayResults(results);
     resultSection.style.display = 'block';
@@ -330,6 +347,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ocrExpiry.compulsory = '';
     ocrExpiry.commercial = '';
     ocrExpiry.nonVehicle = '';
+    lastCalculatedData = null;
   });
 
   // ====== Image Upload ======
