@@ -1537,7 +1537,6 @@ document.addEventListener('DOMContentLoaded', () => {
     copyToClipboard(text);
     showToast('已复制到剪贴板');
   });
-  });
 
   // ====== Clear All Records ======
   btnClearAllRecords.addEventListener('click', () => {
