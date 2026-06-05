@@ -468,8 +468,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ---- OCR Prompt ----
   const OCR_PROMPT = `识别图片中的车险报价信息，返回JSON：
-{"company":"保险公司","plate":"车牌号","compulsoryAmount":数字,"compulsoryRate":数字,"compulsoryExpiry":"2025年3月15日","commercialAmount":数字,"commercialRate":数字,"commercialExpiry":"2025年3月15日","nonVehicleAmount":数字,"nonVehicleRate":数字,"nonVehicleExpiry":"2025年3月15日","vehicleTax":数字}
+{"company":"保险公司","plate":"车牌号","compulsoryAmount":数字,"compulsoryExpiry":"2025年3月15日","commercialAmount":数字,"commercialExpiry":"2025年3月15日","nonVehicleAmount":数字,"nonVehicleExpiry":"2025年3月15日","vehicleTax":数字}
 规则：
+- 只识别保费金额，不识别手续费比例
 - 随车非车保费=除交强险商业险外所有其他险种保费总和
 - 到期时间必须含年月日，格式XXXX年X月X日
 - 未找到的字段填0或空字符串
@@ -573,9 +574,9 @@ document.addEventListener('DOMContentLoaded', () => {
   function mergeOCRResults(dataA, dataB) {
     const fields = [
       'company', 'plate',
-      'compulsoryAmount', 'compulsoryRate', 'compulsoryExpiry',
-      'commercialAmount', 'commercialRate', 'commercialExpiry',
-      'nonVehicleAmount', 'nonVehicleRate', 'nonVehicleExpiry',
+      'compulsoryAmount', 'compulsoryExpiry',
+      'commercialAmount', 'commercialExpiry',
+      'nonVehicleAmount', 'nonVehicleExpiry',
       'vehicleTax',
     ];
 
@@ -612,13 +613,10 @@ document.addEventListener('DOMContentLoaded', () => {
     company: '保险公司',
     plate: '车牌号',
     compulsoryAmount: '交强险保费',
-    compulsoryRate: '交强险费率',
     compulsoryExpiry: '交强险到期',
     commercialAmount: '商业险保费',
-    commercialRate: '商业险费率',
     commercialExpiry: '商业险到期',
     nonVehicleAmount: '随车非车保费',
-    nonVehicleRate: '随车非车费率',
     nonVehicleExpiry: '随车非车到期',
     vehicleTax: '车船税',
   };
@@ -895,13 +893,10 @@ document.addEventListener('DOMContentLoaded', () => {
         company: parsed.company || '',
         plate: parsed.plate || '',
         compulsoryAmount: num(parsed.compulsoryAmount),
-        compulsoryRate: num(parsed.compulsoryRate),
         compulsoryExpiry: parsed.compulsoryExpiry || '',
         commercialAmount: num(parsed.commercialAmount),
-        commercialRate: num(parsed.commercialRate),
         commercialExpiry: parsed.commercialExpiry || '',
         nonVehicleAmount: num(parsed.nonVehicleAmount),
-        nonVehicleRate: num(parsed.nonVehicleRate),
         nonVehicleExpiry: parsed.nonVehicleExpiry || '',
         vehicleTax: num(parsed.vehicleTax),
       };
@@ -916,13 +911,10 @@ document.addEventListener('DOMContentLoaded', () => {
         company: extract('company'),
         plate: extract('plate'),
         compulsoryAmount: num(extract('compulsoryAmount')),
-        compulsoryRate: num(extract('compulsoryRate')),
         compulsoryExpiry: extract('compulsoryExpiry'),
         commercialAmount: num(extract('commercialAmount')),
-        commercialRate: num(extract('commercialRate')),
         commercialExpiry: extract('commercialExpiry'),
         nonVehicleAmount: num(extract('nonVehicleAmount')),
-        nonVehicleRate: num(extract('nonVehicleRate')),
         nonVehicleExpiry: extract('nonVehicleExpiry'),
         vehicleTax: num(extract('vehicleTax')),
       };
