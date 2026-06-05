@@ -416,48 +416,48 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function showConfirmDialog(data) {
-    let html = '<div style="text-align:left;font-size:14px;line-height:1.6;">';
-    html += '<div style="font-weight:600;margin-bottom:10px;color:#2D2D2D;">请核对以下数据：</div>';
+    let html = '<div class="confirm-dialog-content">';
+    html += '<div class="confirm-dialog-title">请核对以下数据：</div>';
 
     // 基本信息
-    html += '<div style="background:#FDF8F6;border-radius:10px;padding:12px 14px;margin-bottom:10px;">';
-    html += `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#999;">保险公司</span><span style="font-weight:600;">${data.company || '未填写'}</span></div>`;
-    html += `<div style="display:flex;justify-content:space-between;"><span style="color:#999;">车牌号</span><span style="font-weight:600;">${data.plate || '未填写'}</span></div>`;
+    html += '<div class="confirm-card confirm-card-info">';
+    html += `<div class="confirm-row"><span class="confirm-label">保险公司</span><span class="confirm-value">${data.company || '未填写'}</span></div>`;
+    html += `<div class="confirm-row"><span class="confirm-label">车牌号</span><span class="confirm-value">${data.plate || '未填写'}</span></div>`;
     html += '</div>';
 
     // 交强险
     if (data.compulsoryRate > 0) {
-      html += '<div style="background:#FFF5F0;border-left:3px solid #E8734A;border-radius:0 10px 10px 0;padding:10px 14px;margin-bottom:8px;">';
-      html += `<div style="font-weight:600;color:#E8734A;margin-bottom:4px;">交强险</div>`;
-      html += `<div style="display:flex;justify-content:space-between;"><span>保费</span><span style="font-weight:600;">${data.compulsoryAmount} 元</span></div>`;
-      html += `<div style="display:flex;justify-content:space-between;"><span>费率</span><span style="font-weight:600;">${data.compulsoryRate}%</span></div>`;
-      if (data.compulsoryExpiry) html += `<div style="display:flex;justify-content:space-between;"><span>到期</span><span style="font-weight:600;">${data.compulsoryExpiry}</span></div>`;
+      html += '<div class="confirm-card confirm-card-compulsory">';
+      html += '<div class="confirm-card-title" style="color:#E8734A;">交强险</div>';
+      html += `<div class="confirm-row"><span>保费</span><span class="confirm-value">${data.compulsoryAmount} 元</span></div>`;
+      html += `<div class="confirm-row"><span>费率</span><span class="confirm-value">${data.compulsoryRate}%</span></div>`;
+      if (data.compulsoryExpiry) html += `<div class="confirm-row"><span>到期</span><span class="confirm-value">${data.compulsoryExpiry}</span></div>`;
       html += '</div>';
     }
 
     // 商业险
     if (data.commercialRate > 0) {
-      html += '<div style="background:#FFFBF0;border-left:3px solid #E8A04A;border-radius:0 10px 10px 0;padding:10px 14px;margin-bottom:8px;">';
-      html += `<div style="font-weight:600;color:#E8A04A;margin-bottom:4px;">商业险</div>`;
-      html += `<div style="display:flex;justify-content:space-between;"><span>保费</span><span style="font-weight:600;">${data.commercialAmount} 元</span></div>`;
-      html += `<div style="display:flex;justify-content:space-between;"><span>费率</span><span style="font-weight:600;">${data.commercialRate}%</span></div>`;
-      if (data.commercialExpiry) html += `<div style="display:flex;justify-content:space-between;"><span>到期</span><span style="font-weight:600;">${data.commercialExpiry}</span></div>`;
+      html += '<div class="confirm-card confirm-card-commercial">';
+      html += '<div class="confirm-card-title" style="color:#E8A04A;">商业险</div>';
+      html += `<div class="confirm-row"><span>保费</span><span class="confirm-value">${data.commercialAmount} 元</span></div>`;
+      html += `<div class="confirm-row"><span>费率</span><span class="confirm-value">${data.commercialRate}%</span></div>`;
+      if (data.commercialExpiry) html += `<div class="confirm-row"><span>到期</span><span class="confirm-value">${data.commercialExpiry}</span></div>`;
       html += '</div>';
     }
 
     // 随车非车
     if (data.nonVehicleRate > 0) {
-      html += '<div style="background:#F0FAF7;border-left:3px solid #6CB4A8;border-radius:0 10px 10px 0;padding:10px 14px;margin-bottom:8px;">';
-      html += `<div style="font-weight:600;color:#6CB4A8;margin-bottom:4px;">随车非车</div>`;
-      html += `<div style="display:flex;justify-content:space-between;"><span>保费</span><span style="font-weight:600;">${data.nonVehicleAmount} 元</span></div>`;
-      html += `<div style="display:flex;justify-content:space-between;"><span>费率</span><span style="font-weight:600;">${data.nonVehicleRate}%</span></div>`;
+      html += '<div class="confirm-card confirm-card-nonvehicle">';
+      html += '<div class="confirm-card-title" style="color:#6CB4A8;">随车非车</div>';
+      html += `<div class="confirm-row"><span>保费</span><span class="confirm-value">${data.nonVehicleAmount} 元</span></div>`;
+      html += `<div class="confirm-row"><span>费率</span><span class="confirm-value">${data.nonVehicleRate}%</span></div>`;
       html += '</div>';
     }
 
     // 车船税
     if (data.vehicleTax > 0) {
-      html += '<div style="background:#F5F5F5;border-radius:10px;padding:10px 14px;margin-bottom:8px;">';
-      html += `<div style="display:flex;justify-content:space-between;"><span style="color:#999;">车船税</span><span style="font-weight:600;">${data.vehicleTax} 元</span></div>`;
+      html += '<div class="confirm-card confirm-card-tax">';
+      html += `<div class="confirm-row"><span class="confirm-label">车船税</span><span class="confirm-value">${data.vehicleTax} 元</span></div>`;
       html += '</div>';
     }
 
