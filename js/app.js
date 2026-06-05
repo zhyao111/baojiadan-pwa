@@ -1961,19 +1961,33 @@ document.addEventListener('DOMContentLoaded', () => {
       const item = document.createElement('div');
       item.className = 'record-item';
       item.dataset.recordId = r.id;
+
+      // 构建费用明细
+      const feeItems = [];
+      if (r.compulsoryFee > 0) feeItems.push(`<span class="record-fee-item"><span class="record-fee-dot" style="background:#E8734A;"></span>交强险 ${formatMoney(r.compulsoryFee)}</span>`);
+      if (r.commercialFee > 0) feeItems.push(`<span class="record-fee-item"><span class="record-fee-dot" style="background:#E8A04A;"></span>商业险 ${formatMoney(r.commercialFee)}</span>`);
+      if (r.nonVehicleFee > 0) feeItems.push(`<span class="record-fee-item"><span class="record-fee-dot" style="background:#6CB4A8;"></span>随车非车 ${formatMoney(r.nonVehicleFee)}</span>`);
+
+      // 构建保险类型标签
+      const tags = [];
+      if (r.compulsoryRate > 0) tags.push('交强');
+      if (r.commercialRate > 0) tags.push('商业');
+      if (r.nonVehicleRate > 0) tags.push('非车');
+
       item.innerHTML = `
-        <div class="record-item-header">
-          <div class="record-plate-wrap">
-            <span class="record-company">${escapeHtml(r.company || '未填写')}</span>
-            <span class="record-plate">${escapeHtml(r.plate || '未填写')}</span>
+        <div class="record-item-top">
+          <div class="record-item-info">
+            <div class="record-company">${escapeHtml(r.company || '未填写')}</div>
+            <div class="record-plate">${escapeHtml(r.plate || '未填写')}</div>
           </div>
-          <span class="record-time">${escapeHtml(r.time)}</span>
+          <div class="record-item-meta">
+            <div class="record-time">${escapeHtml(r.time)}</div>
+            <div class="record-tags">${tags.map(t => `<span class="record-tag">${t}</span>`).join('')}</div>
+          </div>
         </div>
-        <div class="record-amount">${formatMoney(r.afterTax || 0)}</div>
+        <div class="record-amount">¥${formatMoney(r.afterTax || 0)}</div>
+        ${feeItems.length > 0 ? `<div class="record-fees">${feeItems.join('')}</div>` : ''}
         <div class="record-bottom">
-          <div class="record-detail">
-            交强险 ${formatMoney(r.compulsoryFee || 0)} / 商业险 ${formatMoney(r.commercialFee || 0)} / 随车非车 ${formatMoney(r.nonVehicleFee || 0)}
-          </div>
           <button class="record-delete" data-id="${r.id}" title="删除记录">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
               <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>

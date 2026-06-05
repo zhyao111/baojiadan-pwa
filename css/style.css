@@ -1618,79 +1618,107 @@ input[type="number"] {
   transition: all 0.2s;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
   border: 1px solid #F5F0EE;
+  cursor: pointer;
 }
 
 .record-item:active {
-  background: #FDF8F6;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  transform: scale(0.98);
 }
 
-.record-item-header {
+.record-item-top {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
-.record-plate-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.record-item-info {
+  flex: 1;
 }
 
 .record-company {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--text);
+  margin-bottom: 4px;
 }
 
 .record-plate {
   font-size: 13px;
   color: var(--text-secondary);
-  background: var(--input-bg);
-  padding: 2px 8px;
-  border-radius: 6px;
-  display: inline-block;
+  font-family: 'SF Mono', 'Menlo', monospace;
+}
+
+.record-item-meta {
+  text-align: right;
 }
 
 .record-time {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-light);
-  background: #F5F5F5;
-  padding: 4px 8px;
-  border-radius: 6px;
+  margin-bottom: 6px;
+}
+
+.record-tags {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.record-tag {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 500;
 }
 
 .record-amount {
-  font-size: clamp(20px, 5vw, 28px);
+  font-size: 28px;
   font-weight: 700;
   color: var(--primary);
+  margin-bottom: 12px;
   letter-spacing: -0.5px;
 }
 
-.record-detail {
+.record-fees {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.record-fee-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 12px;
   color: var(--text-secondary);
-  line-height: 1.6;
-  background: #FAFAFA;
-  padding: 10px 12px;
-  border-radius: 8px;
-  flex: 1;
-  min-width: 0;
+  background: var(--input-bg);
+  padding: 5px 10px;
+  border-radius: 6px;
+}
+
+.record-fee-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .record-bottom {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 10px;
+  justify-content: flex-end;
+  padding-top: 10px;
+  border-top: 1px solid #F5F0EE;
 }
 
 .record-delete {
-  height: 34px;
-  padding: 0 14px;
-  border: 1.5px solid #E74C3C;
-  background: #FFF5F5;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid #E74C3C;
+  background: transparent;
   color: #E74C3C;
   cursor: pointer;
   font-size: 12px;
@@ -1699,14 +1727,13 @@ input[type="number"] {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  border-radius: 10px;
+  border-radius: 8px;
   transition: all 0.2s;
-  flex-shrink: 0;
 }
 
 .record-delete:active {
-  color: white;
   background: #E74C3C;
+  color: white;
 }
 
 /* ========== Confirm Dialog ========== */
