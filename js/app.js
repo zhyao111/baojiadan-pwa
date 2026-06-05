@@ -62,25 +62,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const settingsMenu = $('#settingsMenu');
   const btnGoRecords = $('#btnGoRecords');
   const btnGoModels = $('#btnGoModels');
-  const btnGoFailover = $('#btnGoFailover');
   const btnGoDualConfig = $('#btnGoDualConfig');
   const subpageRecords = $('#subpageRecords');
   const subpageModels = $('#subpageModels');
-  const subpageFailover = $('#subpageFailover');
   const subpageDualConfig = $('#subpageDualConfig');
   const btnBackFromRecords = $('#btnBackFromRecords');
   const btnBackFromModels = $('#btnBackFromModels');
-  const btnBackFromFailover = $('#btnBackFromFailover');
   const btnBackFromDualConfig = $('#btnBackFromDualConfig');
 
   // Provider Management
   const providerListEl = $('#providerList');
 
-  // Failover queue
-  const chkFailover = $('#chkFailover');
-  const selectFailoverProvider = $('#selectFailoverProvider');
-  const btnAddFailover = $('#btnAddFailover');
-  const failoverQueueEl = $('#failoverQueue');
+  // Provider Management
   const emptyStateProviders = $('#emptyStateProviders');
   const btnAddProvider = $('#btnAddProvider');
   const providerModal = $('#providerModal');
@@ -162,27 +155,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (name === 'records') {
       subpageRecords.style.display = 'block';
       subpageModels.style.display = 'none';
-      subpageFailover.style.display = 'none';
       subpageDualConfig.style.display = 'none';
       renderRecords();
     } else if (name === 'models') {
       subpageModels.style.display = 'block';
       subpageRecords.style.display = 'none';
-      subpageFailover.style.display = 'none';
       subpageDualConfig.style.display = 'none';
       renderProviders();
-      renderFailoverUI();
-    } else if (name === 'failover') {
-      subpageFailover.style.display = 'block';
-      subpageModels.style.display = 'none';
-      subpageRecords.style.display = 'none';
-      subpageDualConfig.style.display = 'none';
-      renderFailoverUI();
     } else if (name === 'dualConfig') {
       subpageDualConfig.style.display = 'block';
       subpageModels.style.display = 'none';
       subpageRecords.style.display = 'none';
-      subpageFailover.style.display = 'none';
       renderDualConfigUI();
     }
   }
@@ -191,17 +174,14 @@ document.addEventListener('DOMContentLoaded', () => {
     settingsMenu.style.display = 'block';
     subpageRecords.style.display = 'none';
     subpageModels.style.display = 'none';
-    subpageFailover.style.display = 'none';
     subpageDualConfig.style.display = 'none';
   }
 
   btnGoRecords.addEventListener('click', () => showSubpage('records'));
-  btnGoFailover.addEventListener('click', () => showSubpage('failover'));
   btnGoModels.addEventListener('click', () => showSubpage('models'));
   btnGoDualConfig.addEventListener('click', () => showSubpage('dualConfig'));
   btnBackFromRecords.addEventListener('click', hideSubpages);
   btnBackFromModels.addEventListener('click', hideSubpages);
-  btnBackFromFailover.addEventListener('click', hideSubpages);
   btnBackFromDualConfig.addEventListener('click', hideSubpages);
 
   // ====== Quick Fill Rate ======
@@ -760,84 +740,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function tryWithFailover(provider, file, base64, dataUrl) {
-    const cfg = getFailoverConfig();
-    if (!cfg.enabled || !cfg.queue || cfg.queue.length === 0) {
-      const model = provider.selectedModel || provider.models[0] || '';
-      return {
-        providerName: provider.name,
-        modelName: model,
-        data: await callProviderAPI(provider, model, dataUrl, base64, file.type),
-      };
-    }
-
-    const all = cfg.queue.map((id) => getProviders().find((p) => p.id === id)).filter(Boolean);
-    const tryList = [];
-    const seen = new Set();
-    if (provider) { tryList.push(provider); seen.add(provider.id); }
-    all.forEach((p) => { if (!seen.has(p.id)) { tryList.push(p); seen.add(p.id); } });
-
-    const maxRetries = cfg.retryCount || 3;
-    const timeout = (cfg.timeout || 30) * 1000;
-    const breakerEnabled = cfg.circuitBreaker !== false;
-    const breakerThreshold = cfg.breakerThreshold || 3;
-    const breakerCooldown = (cfg.breakerCooldown || 5) * 60 * 1000;
-
-    let totalTries = 0;
-    let lastErr = null;
-
-    // Circuit breaker state
-    if (!window._failoverBreaker) window._failoverBreaker = {};
-    const breaker = window._failoverBreaker;
-
-    for (const p of tryList) {
-      if (totalTries >= maxRetries) break;
-
-      // Check circuit breaker
-      if (breakerEnabled && breaker[p.id]) {
-        const frozen = breaker[p.id];
-        if (Date.now() - frozen.since < breakerCooldown) {
-          console.warn(`Failover: ${p.name} is circuit-broken, skipping`);
-          totalTries++;
-          continue;
-        } else {
-          delete breaker[p.id]; // cooldown expired, reset
-        }
-      }
-
-      const model = p.selectedModel || p.models[0] || '';
-      imgPreviewStatus.textContent = `[${totalTries + 1}/${maxRetries}] 使用 ${p.name} · ${model} 识别中...`;
-      imgPreviewStatus.className = 'img-preview-status loading';
-
-      try {
-        const data = await callProviderAPIWithTimeout(p, model, dataUrl, base64, file.type, timeout);
-        // Success — reset breaker for this provider
-        if (breaker[p.id]) delete breaker[p.id];
-        return { providerName: p.name, modelName: model, data };
-      } catch (err) {
-        lastErr = err;
-        totalTries++;
-        console.warn(`Failover: ${p.name} failed (${totalTries}/${maxRetries})`, err.message);
-
-        // Track for circuit breaker
-        if (breakerEnabled) {
-          if (!breaker[p.id]) breaker[p.id] = { failCount: 0, since: Date.now() };
-          breaker[p.id].failCount++;
-          breaker[p.id].since = Date.now();
-          if (breaker[p.id].failCount >= breakerThreshold) {
-            console.warn(`Failover: ${p.name} circuit BREAK (${breaker[p.id].failCount} consecutive failures)`);
-          }
-        }
-      }
-    }
-    throw lastErr || new Error('所有供应商均识别失败');
-  }
-
-  async function callProviderAPIWithTimeout(provider, modelName, dataUrl, base64, mimeType, timeout) {
-    const result = await Promise.race([
-      callProviderAPI(provider, modelName, dataUrl, base64, mimeType),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('请求超时')), timeout)),
-    ]);
-    return result;
+    const model = provider.selectedModel || provider.models[0] || '';
+    return {
+      providerName: provider.name,
+      modelName: model,
+      data: await callProviderAPI(provider, model, dataUrl, base64, file.type),
+    };
   }
 
   async function callProviderAPI(provider, modelName, dataUrl, base64, mimeType) {
@@ -1807,127 +1715,6 @@ document.addEventListener('DOMContentLoaded', () => {
       providerListEl.appendChild(card);
     });
   }
-
-  // ====== Failover Queue ======
-  const FAILOVER_KEY = 'chefeibao_failover';
-  const selectRetryCount = $('#selectRetryCount');
-  const selectTimeout = $('#selectTimeout');
-  const chkCircuitBreaker = $('#chkCircuitBreaker');
-  const selectBreakerThreshold = $('#selectBreakerThreshold');
-  const selectBreakerCooldown = $('#selectBreakerCooldown');
-
-  function getFailoverConfig() {
-    try { return JSON.parse(localStorage.getItem(FAILOVER_KEY) || '{"enabled":true,"queue":[],"retryCount":3,"timeout":30,"circuitBreaker":true,"breakerThreshold":3,"breakerCooldown":5}'); }
-    catch { return { enabled: true, queue: [], retryCount: 3, timeout: 30, circuitBreaker: true, breakerThreshold: 3, breakerCooldown: 5 }; }
-  }
-
-  function saveFailoverConfig(cfg) {
-    localStorage.setItem(FAILOVER_KEY, JSON.stringify(cfg));
-  }
-
-  function getFailoverQueue() {
-    const cfg = getFailoverConfig();
-    const providers = getProviders();
-    return cfg.queue.map((id) => {
-      const p = providers.find((x) => x.id === id);
-      return p || null;
-    }).filter(Boolean);
-  }
-
-  function renderFailoverUI() {
-    const cfg = getFailoverConfig();
-    chkFailover.checked = cfg.enabled;
-    selectRetryCount.value = cfg.retryCount || 3;
-    selectTimeout.value = cfg.timeout || 30;
-    chkCircuitBreaker.checked = cfg.circuitBreaker !== false;
-    selectBreakerThreshold.value = cfg.breakerThreshold || 3;
-    selectBreakerCooldown.value = cfg.breakerCooldown || 5;
-    const providers = getProviders();
-    const queue = cfg.queue.filter((id) => providers.some((p) => p.id === id));
-
-    // Populate select
-    selectFailoverProvider.innerHTML = '<option value="">选择供应商...</option>';
-    providers.forEach((p) => {
-      if (!queue.includes(p.id)) {
-        const opt = document.createElement('option');
-        opt.value = p.id;
-        opt.textContent = p.name || p.id;
-        selectFailoverProvider.appendChild(opt);
-      }
-    });
-
-    // Render queue list
-    if (queue.length === 0) {
-      failoverQueueEl.innerHTML = '<p class="failover-queue-empty">暂无供应商，请将供应商加入队列</p>';
-      return;
-    }
-    failoverQueueEl.innerHTML = '';
-    queue.forEach((id, i) => {
-      const p = providers.find((x) => x.id === id);
-      if (!p) return;
-      const item = document.createElement('div');
-      item.className = 'failover-queue-item';
-      item.innerHTML = `
-        <span class="failover-queue-order">P${i + 1}</span>
-        <div class="failover-queue-info">
-          <div class="failover-queue-name">${escapeHtml(p.name || p.id)}</div>
-          <div class="failover-queue-model">${escapeHtml(p.selectedModel || (p.models[0] || ''))}</div>
-        </div>
-        <button class="failover-queue-remove" data-id="${id}" title="移出队列">&times;</button>
-      `;
-      item.querySelector('.failover-queue-remove').addEventListener('click', () => {
-        const newQueue = queue.filter((x) => x !== id);
-        saveFailoverConfig({ ...getFailoverConfig(), queue: newQueue });
-        renderFailoverUI();
-      });
-      failoverQueueEl.appendChild(item);
-    });
-  }
-
-  chkFailover.addEventListener('change', () => {
-    const cfg = getFailoverConfig();
-    cfg.enabled = chkFailover.checked;
-    saveFailoverConfig(cfg);
-  });
-
-  selectRetryCount.addEventListener('change', () => {
-    const cfg = getFailoverConfig();
-    cfg.retryCount = parseInt(selectRetryCount.value, 10);
-    saveFailoverConfig(cfg);
-  });
-
-  selectTimeout.addEventListener('change', () => {
-    const cfg = getFailoverConfig();
-    cfg.timeout = parseInt(selectTimeout.value, 10);
-    saveFailoverConfig(cfg);
-  });
-
-  chkCircuitBreaker.addEventListener('change', () => {
-    const cfg = getFailoverConfig();
-    cfg.circuitBreaker = chkCircuitBreaker.checked;
-    saveFailoverConfig(cfg);
-  });
-
-  selectBreakerThreshold.addEventListener('change', () => {
-    const cfg = getFailoverConfig();
-    cfg.breakerThreshold = parseInt(selectBreakerThreshold.value, 10);
-    saveFailoverConfig(cfg);
-  });
-
-  selectBreakerCooldown.addEventListener('change', () => {
-    const cfg = getFailoverConfig();
-    cfg.breakerCooldown = parseInt(selectBreakerCooldown.value, 10);
-    saveFailoverConfig(cfg);
-  });
-
-  btnAddFailover.addEventListener('click', () => {
-    const id = selectFailoverProvider.value;
-    if (!id) { showToast('请选择供应商'); return; }
-    const cfg = getFailoverConfig();
-    cfg.queue.push(id);
-    saveFailoverConfig(cfg);
-    renderFailoverUI();
-  });
 
   // ====== Dual Recognition Config ======
   const DUAL_KEY = 'chefeibao_dual';
