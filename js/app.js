@@ -557,8 +557,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     showImagePreview(file);
     setTimeout(() => {
-      quickRate.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setTimeout(() => quickRate.focus(), 300);
+      btnCalculate.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 200);
   });
 
