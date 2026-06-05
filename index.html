@@ -351,12 +351,19 @@
           </div>
 
           <div class="failover-controls">
-            <div class="failover-switch-row">
+            <div class="failover-switch-row" style="justify-content:space-between;">
               <label class="toggle-switch">
                 <input type="checkbox" id="chkDualRecognize" checked>
                 <span class="toggle-track"></span>
-                <span class="toggle-label">启用双重识别</span>
+                <span class="toggle-label">启用多重识别</span>
               </label>
+              <button class="btn btn-reset" id="btnTestAllDualModels" type="button" style="height:36px;padding:0 14px;font-size:0.75rem;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;margin-right:4px;">
+                  <path d="M22 11.08V12a10 10 0 11-5.93-9.14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <polyline points="22,4 12,14.01 9,11.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                测试所有模型
+              </button>
             </div>
 
             <div class="failover-options">
@@ -389,17 +396,6 @@
               <option value="">选择模型...</option>
             </select>
             <button class="btn-add-model" id="btnAddDualModel" type="button">+ 添加</button>
-          </div>
-
-          <!-- 测试所有使用中的模型 -->
-          <div style="margin-top:12px;">
-            <button class="btn btn-reset" id="btnTestAllDualModels" type="button" style="width:100%;font-size:13px;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;margin-right:4px;">
-                <path d="M22 11.08V12a10 10 0 11-5.93-9.14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <polyline points="22,4 12,14.01 9,11.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              测试所有使用中的模型
-            </button>
           </div>
         </div>
 

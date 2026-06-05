@@ -749,6 +749,7 @@ input[type="number"] {
   border-radius: 14px;
   padding: 16px 18px;
   margin-top: 12px;
+  margin-bottom: 16px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
 
@@ -1693,6 +1694,7 @@ input[type="number"] {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  margin-top: 16px;
 }
 
 .record-item {
