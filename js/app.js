@@ -549,10 +549,21 @@ document.addEventListener('DOMContentLoaded', () => {
         allConflicts = [...new Set([...allConflicts, ...result.conflictFields])];
       }
 
-      // 有冲突字段：弹窗让用户选择
+      // 有冲突字段：必须弹窗让用户选择
       if (allConflicts.length > 0) {
         const chosen = await showConflictDialog(allConflicts, succeeded);
-        if (chosen) merged = chosen;
+        if (chosen) {
+          merged = chosen;
+        } else {
+          // 全部跳过：清空冲突字段，让用户自己填
+          allConflicts.forEach(f => {
+            if (f.includes('Amount') || f.includes('Rate') || f === 'vehicleTax') {
+              merged[f] = 0;
+            } else {
+              merged[f] = '';
+            }
+          });
+        }
       }
 
       const names = succeeded.map(r => `${r.providerName}·${r.modelName}`).join(' vs ');
@@ -560,7 +571,7 @@ document.addEventListener('DOMContentLoaded', () => {
       imgPreviewStatus.className = 'img-preview-status';
       applyOCRResult(merged);
       showToast(allConflicts.length > 0
-        ? `已选择您确认的数据`
+        ? '已选择您确认的数据'
         : '多重识别一致，已自动填入数据');
     } catch (err) {
       console.error('OCR error:', err);
@@ -1915,6 +1926,35 @@ document.addEventListener('DOMContentLoaded', () => {
     cfg.models.push(id);
     saveDualConfig(cfg);
     renderDualConfigUI();
+  });
+
+  // 预览冲突弹窗
+  const btnPreviewConflict = $('#btnPreviewConflict');
+  btnPreviewConflict.addEventListener('click', () => {
+    const mockResults = [
+      {
+        providerName: '小米', modelName: 'mimo-v2.5',
+        data: {
+          company: '中国人保', plate: '粤A12345',
+          compulsoryAmount: 950, compulsoryExpiry: '2025年9月15日',
+          commercialAmount: 3500, commercialExpiry: '2025年12月20日',
+          nonVehicleAmount: 800, nonVehicleExpiry: '2025年11月10日',
+          vehicleTax: 420,
+        }
+      },
+      {
+        providerName: '千问', modelName: 'qwen3.6-flash',
+        data: {
+          company: '人保财险', plate: '粤A12345',
+          compulsoryAmount: 950.5, compulsoryExpiry: '2025年9月15日',
+          commercialAmount: 3480, commercialExpiry: '2025年12月20日',
+          nonVehicleAmount: 850, nonVehicleExpiry: '2025年11月10日',
+          vehicleTax: 420,
+        }
+      }
+    ];
+    const mockConflicts = ['company', 'compulsoryAmount', 'commercialAmount', 'nonVehicleAmount'];
+    showConflictDialog(mockConflicts, mockResults);
   });
 
   // 初始化 badge
