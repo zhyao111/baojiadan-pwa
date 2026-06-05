@@ -104,6 +104,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // OCR expiry dates (populated by recognition)
   const ocrExpiry = { compulsory: '', commercial: '', nonVehicle: '' };
 
+  // Expiry date inputs
+  const compulsoryExpiryYear = $('#compulsoryExpiryYear');
+  const compulsoryExpiryMonth = $('#compulsoryExpiryMonth');
+  const compulsoryExpiryDay = $('#compulsoryExpiryDay');
+  const commercialExpiryYear = $('#commercialExpiryYear');
+  const commercialExpiryMonth = $('#commercialExpiryMonth');
+  const commercialExpiryDay = $('#commercialExpiryDay');
+
   // ====== Recognition Models (Custom Provider System) ======
   const PROVIDERS_KEY = 'chefeibao_providers';
   const ACTIVE_PROVIDER_KEY = 'chefeibao_active_provider';
@@ -196,6 +204,15 @@ document.addEventListener('DOMContentLoaded', () => {
       compulsoryRate.value = addValue(compulsoryRate.value, addRates[0]);
       commercialRate.value = addValue(commercialRate.value, addRates[1]);
     }
+  });
+
+  // ====== Rate Input Click -> Jump to Quick Rate ======
+  [compulsoryRate, commercialRate, nonVehicleRate].forEach((el) => {
+    el.addEventListener('click', () => {
+      showToast('请在上方快速填写手续费比例');
+      quickRate.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => quickRate.focus(), 300);
+    });
   });
 
   // ====== Calculate ======
@@ -340,7 +357,9 @@ document.addEventListener('DOMContentLoaded', () => {
       compulsoryAmount, compulsoryRate,
       commercialAmount, commercialRate,
       nonVehicleAmount, nonVehicleRate,
-      vehicleTax
+      vehicleTax,
+      compulsoryExpiryYear, compulsoryExpiryMonth, compulsoryExpiryDay,
+      commercialExpiryYear, commercialExpiryMonth, commercialExpiryDay,
     ];
     inputs.forEach((input) => (input.value = ''));
     resultSection.style.display = 'none';
@@ -659,13 +678,38 @@ document.addEventListener('DOMContentLoaded', () => {
     if (data.compulsoryAmount != null) compulsoryAmount.value = data.compulsoryAmount;
     if (data.compulsoryRate != null) compulsoryRate.value = data.compulsoryRate;
     ocrExpiry.compulsory = data.compulsoryExpiry || '';
+    parseExpiryToInputs(data.compulsoryExpiry, compulsoryExpiryYear, compulsoryExpiryMonth, compulsoryExpiryDay);
     if (data.commercialAmount != null) commercialAmount.value = data.commercialAmount;
     if (data.commercialRate != null) commercialRate.value = data.commercialRate;
     ocrExpiry.commercial = data.commercialExpiry || '';
+    parseExpiryToInputs(data.commercialExpiry, commercialExpiryYear, commercialExpiryMonth, commercialExpiryDay);
     if (data.nonVehicleAmount != null) nonVehicleAmount.value = data.nonVehicleAmount;
     if (data.nonVehicleRate != null) nonVehicleRate.value = data.nonVehicleRate;
     ocrExpiry.nonVehicle = data.nonVehicleExpiry || '';
     if (data.vehicleTax != null) vehicleTax.value = data.vehicleTax;
+  }
+
+  function parseExpiryToInputs(expiryStr, yearEl, monthEl, dayEl) {
+    if (!expiryStr) return;
+    // 格式如 "3月20日" 或 "2025年3月20日"
+    const yearMatch = expiryStr.match(/(\d{4})\s*年/);
+    const monthMatch = expiryStr.match(/(\d{1,2})\s*月/);
+    const dayMatch = expiryStr.match(/(\d{1,2})\s*日/);
+    if (yearMatch) yearEl.value = yearMatch[1];
+    if (monthMatch) monthEl.value = monthMatch[1];
+    if (dayMatch) dayEl.value = dayMatch[1];
+  }
+
+  function buildExpiryStr(yearEl, monthEl, dayEl) {
+    const y = yearEl.value.trim();
+    const m = monthEl.value.trim();
+    const d = dayEl.value.trim();
+    if (!m && !d) return '';
+    let str = '';
+    if (y) str += y + '年';
+    if (m) str += m + '月';
+    if (d) str += d + '日';
+    return str;
   }
 
   function showOCRError(err) {
@@ -1047,10 +1091,10 @@ document.addEventListener('DOMContentLoaded', () => {
       plate: plateNumber.value.trim(),
       compulsoryAmount: parseFloat(compulsoryAmount.value) || 0,
       compulsoryRate: parseFloat(compulsoryRate.value) || 0,
-      compulsoryExpiry: ocrExpiry.compulsory,
+      compulsoryExpiry: buildExpiryStr(compulsoryExpiryYear, compulsoryExpiryMonth, compulsoryExpiryDay) || ocrExpiry.compulsory,
       commercialAmount: parseFloat(commercialAmount.value) || 0,
       commercialRate: parseFloat(commercialRate.value) || 0,
-      commercialExpiry: ocrExpiry.commercial,
+      commercialExpiry: buildExpiryStr(commercialExpiryYear, commercialExpiryMonth, commercialExpiryDay) || ocrExpiry.commercial,
       nonVehicleAmount: parseFloat(nonVehicleAmount.value) || 0,
       nonVehicleRate: parseFloat(nonVehicleRate.value) || 0,
       nonVehicleExpiry: ocrExpiry.nonVehicle,

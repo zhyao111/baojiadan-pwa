@@ -401,6 +401,59 @@ input[type="number"] {
   cursor: not-allowed;
 }
 
+/* ========== Expiry Date Row ========== */
+.expiry-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #F5F0EE;
+}
+
+.expiry-row label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.expiry-inputs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+
+.input-expiry {
+  width: 50px;
+  height: 36px;
+  background: var(--input-bg);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 0 6px;
+  font-size: 13px;
+  text-align: center;
+  color: var(--text);
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.input-expiry:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(200,96,74,0.1);
+}
+
+.input-expiry::placeholder {
+  color: var(--text-light);
+  font-size: 12px;
+}
+
+.expiry-sep {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
 /* ========== Section Label ========== */
 .section-label {
   display: flex;
