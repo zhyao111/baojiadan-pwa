@@ -2889,6 +2889,31 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast(editingProviderId ? '已更新' : '已添加');
   });
 
+  // ====== Font Size Control ======
+  const FONT_SIZE_KEY = 'chefeibao_font_size';
+  const fontSizeSlider = $('#fontSizeSlider');
+  const fontSizeValue = $('#fontSizeValue');
+
+  function getFontSize() {
+    return parseInt(localStorage.getItem(FONT_SIZE_KEY) || '100');
+  }
+
+  function applyFontSize(size) {
+    document.documentElement.style.fontSize = `${size * 16 / 100}px`;
+    fontSizeValue.textContent = `${size}%`;
+  }
+
+  // 初始化字号
+  const savedFontSize = getFontSize();
+  fontSizeSlider.value = savedFontSize;
+  applyFontSize(savedFontSize);
+
+  fontSizeSlider.addEventListener('input', () => {
+    const size = parseInt(fontSizeSlider.value);
+    localStorage.setItem(FONT_SIZE_KEY, size);
+    applyFontSize(size);
+  });
+
   // ====== Init ======
   renderRecords();
   renderProviders();
