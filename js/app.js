@@ -1985,7 +1985,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="record-tags">${tags.map(t => `<span class="record-tag">${t}</span>`).join('')}</div>
           </div>
         </div>
-        <div class="record-amount">¥${formatMoney(r.afterTax || 0)}</div>
+        <div class="record-amount">${formatMoney(r.afterTax || 0)}</div>
         ${feeItems.length > 0 ? `<div class="record-fees">${feeItems.join('')}</div>` : ''}
         <div class="record-bottom">
           <button class="record-delete" data-id="${r.id}" title="删除记录">
