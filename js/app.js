@@ -2904,16 +2904,24 @@ document.addEventListener('DOMContentLoaded', () => {
     fontSizeValue.textContent = `${size}%`;
   }
 
+  function onFontSizeChange() {
+    const size = parseInt(fontSizeSlider.value);
+    localStorage.setItem(FONT_SIZE_KEY, size);
+    applyFontSize(size);
+  }
+
   // 初始化字号
   const savedFontSize = getFontSize();
   fontSizeSlider.value = savedFontSize;
   applyFontSize(savedFontSize);
 
-  fontSizeSlider.addEventListener('input', () => {
-    const size = parseInt(fontSizeSlider.value);
-    localStorage.setItem(FONT_SIZE_KEY, size);
-    applyFontSize(size);
-  });
+  // 同时监听 input 和 change 事件，兼容各种设备
+  fontSizeSlider.addEventListener('input', onFontSizeChange);
+  fontSizeSlider.addEventListener('change', onFontSizeChange);
+
+  // 触摸事件兼容
+  fontSizeSlider.addEventListener('touchmove', onFontSizeChange);
+  fontSizeSlider.addEventListener('touchend', onFontSizeChange);
 
   // ====== Init ======
   renderRecords();
