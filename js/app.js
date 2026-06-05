@@ -874,12 +874,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
       let html = '<div class="confirm-dialog-content">';
       html += `<div class="confirm-dialog-title" style="color:#E74C3C;">⚠️ 已添加 ${models.length} 个模型</div>`;
-      html += `<div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">识别模型数为 ${maxCount}，请选择 ${excludeCount} 个不使用的模型：</div>`;
+      html += `<div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:12px;">识别模型数为 ${maxCount}，请选择 ${excludeCount} 个不使用的模型：</div>`;
 
       models.forEach((item, i) => {
         html += `<div class="exclude-model-item" data-idx="${i}" style="display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:6px;background:var(--card-bg);border:1.5px solid var(--border);border-radius:10px;cursor:pointer;transition:all 0.15s;">`;
         html += `<span class="exclude-checkbox" style="width:20px;height:20px;border-radius:6px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s;"></span>`;
-        html += `<div style="flex:1;"><div style="font-weight:500;font-size:14px;">${item.provider.name || item.provider.id}</div><div style="font-size:12px;color:var(--text-secondary);">${item.model}</div></div>`;
+        html += `<div style="flex:1;"><div style="font-weight:500;font-size:0.85rem;">${item.provider.name || item.provider.id}</div><div style="font-size:0.75rem;color:var(--text-secondary);">${item.model}</div></div>`;
         html += '</div>';
       });
 
@@ -958,12 +958,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
       let html = '<div class="confirm-dialog-content">';
       html += `<div class="confirm-dialog-title" style="color:#4CAF50;">➕ 请添加模型</div>`;
-      html += `<div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">当前模型不足，请选择要参与识别的模型：</div>`;
+      html += `<div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:12px;">当前模型不足，请选择要参与识别的模型：</div>`;
 
       availableModels.forEach((item, i) => {
         html += `<div class="select-model-item" data-idx="${i}" style="display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:6px;background:var(--card-bg);border:1.5px solid var(--border);border-radius:10px;cursor:pointer;transition:all 0.15s;">`;
         html += `<span class="select-checkbox" style="width:20px;height:20px;border-radius:6px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s;"></span>`;
-        html += `<div style="flex:1;"><div style="font-weight:500;font-size:14px;">${item.provider.name || item.provider.id}</div><div style="font-size:12px;color:var(--text-secondary);">${item.model}</div></div>`;
+        html += `<div style="flex:1;"><div style="font-weight:500;font-size:0.85rem;">${item.provider.name || item.provider.id}</div><div style="font-size:0.75rem;color:var(--text-secondary);">${item.model}</div></div>`;
         html += '</div>';
       });
 
@@ -1052,21 +1052,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const providerNames = succeeded.map(r => r.providerName);
 
-      let html = '<div style="text-align:left;font-size:14px;">';
+      let html = '<div style="text-align:left;font-size:0.85rem;">';
       html += '<div style="font-weight:600;margin-bottom:10px;color:#E74C3C;">⚠️ 以下字段两个模型识别结果不一致</div>';
-      html += '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">请点击您认为正确的值</div>';
+      html += '<div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:12px;">请点击您认为正确的值</div>';
 
       conflictFields.forEach((f, idx) => {
         const label = FIELD_LABELS[f] || f;
         const values = succeeded.map(r => r.data[f]);
 
         html += `<div style="background:var(--primary-light);border-radius:10px;padding:10px 12px;margin-bottom:8px;">`;
-        html += `<div style="font-weight:600;color:#E74C3C;margin-bottom:6px;font-size:13px;">${label}</div>`;
+        html += `<div style="font-weight:600;color:#E74C3C;margin-bottom:6px;font-size:0.8rem;">${label}</div>`;
 
         values.forEach((val, vi) => {
           const displayVal = (val === 0 || val === '') ? '未识别到' : val;
           html += `<div class="conflict-option" data-field="${f}" data-value="${val}" data-idx="${idx}">`;
-          html += `<span style="color:var(--text-secondary);font-size:12px;">${providerNames[vi]}</span>`;
+          html += `<span style="color:var(--text-secondary);font-size:0.75rem;">${providerNames[vi]}</span>`;
           html += `<span style="font-weight:600;color:var(--text);">${displayVal}</span>`;
           html += `</div>`;
         });
