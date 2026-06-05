@@ -32,12 +32,21 @@
               </h3>
               <p>自动提取车牌号、保费及保期信息</p>
             </div>
-            <button class="btn-select-img" id="btnSelectImg" type="button">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-              </svg>
-              选图
-            </button>
+            <div class="card-upload-actions">
+              <button class="btn-select-img" id="btnSelectImg" type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                </svg>
+                选图
+              </button>
+              <button class="btn-select-img" id="btnTestAllDualModels" type="button" style="background:var(--card-bg);color:var(--primary);border:1.5px solid var(--primary);">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <path d="M22 11.08V12a10 10 0 11-5.93-9.14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <polyline points="22,4 12,14.01 9,11.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                测试模型
+              </button>
+            </div>
           </div>
           <!-- 图片预览区 -->
           <div class="img-preview-wrap" id="imgPreviewWrap" style="display:none;">

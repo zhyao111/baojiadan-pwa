@@ -154,6 +154,12 @@ body {
   gap: 12px;
 }
 
+.card-upload-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .card-upload-text h3 {
   font-size: 1rem;
   font-weight: 600;

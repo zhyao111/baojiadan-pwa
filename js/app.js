@@ -313,7 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const missing = [];
     if (!insuranceCompany.value.trim()) missing.push({ label: '保险公司', el: insuranceCompany });
     if (!plateNumber.value.trim()) missing.push({ label: '车牌号', el: plateNumber });
-    if (!quickRate.value.trim()) missing.push({ label: '手续费比例', el: quickRate });
+    if (!quickRate.value.trim()) missing.push({ label: '费率', el: quickRate });
 
     // 有未填项：弹窗显示所有未填项
     if (missing.length > 0) {
@@ -326,6 +326,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (rates.length >= 1) compulsoryRate.value = rates[0];
     if (rates.length >= 2) commercialRate.value = rates[1];
     if (rates.length >= 3) nonVehicleRate.value = rates[2];
+
+    // 重新获取数据（包含新填入的费率）
+    const newData = getFormData();
+
+    // 检查是否有保费数据
+    const hasAmount = newData.compulsoryAmount > 0 || newData.commercialAmount > 0 || newData.nonVehicleAmount > 0 || newData.vehicleTax > 0;
+    if (!hasAmount) {
+      showToast('请先填写保费金额');
+      compulsoryAmount.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => compulsoryAmount.focus(), 300);
+      return;
+    }
 
     // 重新获取数据（包含新填入的费率）
     const newData = getFormData();
