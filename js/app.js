@@ -321,7 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // 从快速填写手续费比例解析并填入三个保险的手续费比例
+    // 从快速填写费率解析并填入三个保险的费率
     const rates = parseQuickRate(quickRate.value.trim());
     if (rates.length >= 1) compulsoryRate.value = rates[0];
     if (rates.length >= 2) commercialRate.value = rates[1];
@@ -2124,7 +2124,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (record.compulsoryExpiry) parseExpiryToInputs(record.compulsoryExpiry, compulsoryExpiryYear, compulsoryExpiryMonth, compulsoryExpiryDay);
     if (record.commercialExpiry) parseExpiryToInputs(record.commercialExpiry, commercialExpiryYear, commercialExpiryMonth, commercialExpiryDay);
 
-    // 恢复快速填写手续费比例
+    // 恢复快速填写费率
     if (record.compulsoryRate && record.commercialRate && record.nonVehicleRate) {
       quickRate.value = `${record.compulsoryRate}/${record.commercialRate}/${record.nonVehicleRate}`;
     }
