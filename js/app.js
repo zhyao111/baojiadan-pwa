@@ -541,14 +541,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // 多个都成功：逐字段对比合并
       let merged = succeeded[0].data;
+      let allConflicts = [];
       for (let i = 1; i < succeeded.length; i++) {
-        merged = mergeOCRResults(merged, succeeded[i].data).data;
+        const result = mergeOCRResults(merged, succeeded[i].data);
+        merged = result.data;
+        allConflicts = [...new Set([...allConflicts, ...result.conflictFields])];
       }
       const names = succeeded.map(r => `${r.providerName}·${r.modelName}`).join(' vs ');
       imgPreviewStatus.textContent = `${names} — 多重识别完成`;
       imgPreviewStatus.className = 'img-preview-status';
-      applyOCRResult(merged);
-      showToast('多重识别完成，已自动填入数据');
+      applyOCRResult(merged, allConflicts);
+      showToast(allConflicts.length > 0
+        ? `识别完成，${allConflicts.length} 个字段有差异已标红`
+        : '多重识别一致，已自动填入数据');
     } catch (err) {
       console.error('OCR error:', err);
       imgPreviewStatus.textContent = '识别失败：' + (err.message || '未知错误');
@@ -853,7 +858,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function applyOCRResult(data) {
+  function applyOCRResult(data, conflictFields) {
+    // 先清除所有冲突标记
+    const allInputs = [insuranceCompany, plateNumber,
+      compulsoryAmount, compulsoryExpiryYear, compulsoryExpiryMonth, compulsoryExpiryDay,
+      commercialAmount, commercialExpiryYear, commercialExpiryMonth, commercialExpiryDay,
+      nonVehicleAmount, vehicleTax];
+    allInputs.forEach(el => el.classList.remove('input-conflict'));
+
     resultSection.style.display = 'none';
     insuranceCompany.value = data.company || '';
     plateNumber.value = data.plate || '';
@@ -869,6 +881,32 @@ document.addEventListener('DOMContentLoaded', () => {
     if (data.nonVehicleRate != null) nonVehicleRate.value = data.nonVehicleRate;
     ocrExpiry.nonVehicle = data.nonVehicleExpiry || '';
     if (data.vehicleTax != null) vehicleTax.value = data.vehicleTax;
+
+    // 标红有冲突的字段
+    if (conflictFields && conflictFields.length > 0) {
+      const conflictMap = {
+        'company': insuranceCompany,
+        'plate': plateNumber,
+        'compulsoryAmount': compulsoryAmount,
+        'compulsoryRate': compulsoryRate,
+        'compulsoryExpiry': [compulsoryExpiryYear, compulsoryExpiryMonth, compulsoryExpiryDay],
+        'commercialAmount': commercialAmount,
+        'commercialRate': commercialRate,
+        'commercialExpiry': [commercialExpiryYear, commercialExpiryMonth, commercialExpiryDay],
+        'nonVehicleAmount': nonVehicleAmount,
+        'nonVehicleRate': nonVehicleRate,
+        'nonVehicleExpiry': null,
+        'vehicleTax': vehicleTax,
+      };
+      conflictFields.forEach(f => {
+        const el = conflictMap[f];
+        if (Array.isArray(el)) {
+          el.forEach(e => e && e.classList.add('input-conflict'));
+        } else if (el) {
+          el.classList.add('input-conflict');
+        }
+      });
+    }
   }
 
   function parseExpiryToInputs(expiryStr, yearEl, monthEl, dayEl) {

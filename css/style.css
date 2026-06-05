@@ -401,6 +401,16 @@ input[type="number"] {
   cursor: not-allowed;
 }
 
+.input-conflict {
+  border-color: #E74C3C !important;
+  background: #FFF5F5 !important;
+  box-shadow: 0 0 0 2px rgba(231,76,60,0.15) !important;
+}
+
+.input-conflict::placeholder {
+  color: #E74C3C;
+}
+
 /* ========== Expiry Date Row ========== */
 .expiry-row {
   display: flex;
