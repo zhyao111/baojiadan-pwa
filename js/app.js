@@ -1581,7 +1581,7 @@ document.addEventListener('DOMContentLoaded', () => {
       id: Date.now(),
       company: insuranceCompany.value || '未填写',
       plate: plateNumber.value || '未填写',
-      time: new Date().toLocaleString('zh-CN'),
+      time: new Date().toLocaleDateString('zh-CN'),
       ...data,
       ...results,
       localImage: null,
