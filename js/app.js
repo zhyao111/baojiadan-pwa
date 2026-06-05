@@ -287,13 +287,19 @@ document.addEventListener('DOMContentLoaded', () => {
     lines.push(`保险公司：${data.company || '未填写'}`);
     lines.push(`车牌号：${data.plate || '未填写'}`);
     if (data.compulsoryRate > 0) {
-      lines.push(`交强险：保费 ${data.compulsoryAmount} 元，费率 ${data.compulsoryRate}%`);
+      let line = `交强险：保费 ${data.compulsoryAmount} 元，费率 ${data.compulsoryRate}%`;
+      if (data.compulsoryExpiry) line += `，到期 ${data.compulsoryExpiry}`;
+      lines.push(line);
     }
     if (data.commercialRate > 0) {
-      lines.push(`商业险：保费 ${data.commercialAmount} 元，费率 ${data.commercialRate}%`);
+      let line = `商业险：保费 ${data.commercialAmount} 元，费率 ${data.commercialRate}%`;
+      if (data.commercialExpiry) line += `，到期 ${data.commercialExpiry}`;
+      lines.push(line);
     }
     if (data.nonVehicleRate > 0) {
-      lines.push(`随车非车：保费 ${data.nonVehicleAmount} 元，费率 ${data.nonVehicleRate}%`);
+      let line = `随车非车：保费 ${data.nonVehicleAmount} 元，费率 ${data.nonVehicleRate}%`;
+      if (data.nonVehicleExpiry) line += `，到期 ${data.nonVehicleExpiry}`;
+      lines.push(line);
     }
     if (data.vehicleTax > 0) {
       lines.push(`车船税：${data.vehicleTax} 元`);
