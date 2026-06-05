@@ -2165,23 +2165,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const activeId = getActiveProviderId();
     const dualCfg = getDualConfig();
-    // 收集参与多重识别的供应商ID
-    const dualProviderIds = new Set(
-      dualCfg.enabled ? dualCfg.models.map(m => m.providerId) : []
-    );
+    const dualEnabled = dualCfg.enabled;
+
+    // 收集参与多重识别的供应商及其模型
+    const dualInfoMap = new Map();
+    if (dualEnabled) {
+      dualCfg.models.forEach(item => {
+        if (!dualInfoMap.has(item.providerId)) {
+          dualInfoMap.set(item.providerId, []);
+        }
+        dualInfoMap.get(item.providerId).push(item.model);
+      });
+    }
 
     providers.forEach((p) => {
       const isActive = p.id === activeId;
-      const isDual = dualProviderIds.has(p.id);
+      const isDual = dualInfoMap.has(p.id);
+      const dualModels = dualInfoMap.get(p.id) || [];
       const card = document.createElement('div');
       card.className = 'provider-card' + (isActive ? ' active' : '');
       card.innerHTML = `
         <div class="provider-card-header">
           <span class="provider-card-dot"></span>
           <span class="provider-card-name">${escapeHtml(p.name || p.id)}</span>
-          ${isDual ? '<span class="provider-card-badge" style="background:#EEF7FF;color:#2196F3;">使用中</span>' : ''}
+          ${isDual ? '<span class="provider-card-badge" style="background:#EEF7FF;color:#2196F3;">多重识别</span>' : (isActive ? '<span class="provider-card-badge">使用中</span>' : '')}
         </div>
         <div class="provider-card-meta">${escapeHtml(p.baseUrl)}</div>
+        ${dualModels.length > 0 ? `<div class="provider-card-dual-models">${dualModels.map(m => `<span class="provider-model-chip" style="background:#EEF7FF;color:#2196F3;">${escapeHtml(m)}</span>`).join('')}</div>` : ''}
         <select class="provider-model-select" data-action="switchModel" data-id="${p.id}">
           ${(p.models || []).map((m) =>
             `<option value="${escapeHtml(m)}"${m === (p.selectedModel || p.models[0]) ? ' selected' : ''}>${escapeHtml(m)}</option>`
