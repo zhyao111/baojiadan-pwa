@@ -224,6 +224,68 @@ document.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => quickRate.focus(), 300);
       return;
     }
+
+    // 从快速填写手续费比例解析并填入三个保险的手续费比例
+    const rates = parseQuickRate(quickRate.value.trim());
+    if (rates.length >= 1) compulsoryRate.value = rates[0];
+    if (rates.length >= 2) commercialRate.value = rates[1];
+    if (rates.length >= 3) nonVehicleRate.value = rates[2];
+
+    // 重新获取数据（包含新填入的费率）
+    const newData = getFormData();
+
+    // 弹出确认框，让用户核对数据
+    showConfirmDialog(newData);
+  });
+
+  function parseQuickRate(str) {
+    // 支持 / 或 - 或 , 或 空格 分隔
+    const parts = str.split(/[\/\-\,\s]+/).filter(s => s.trim() !== '');
+    return parts.map(s => parseFloat(s) || 0);
+  }
+
+  function showConfirmDialog(data) {
+    const lines = [];
+    lines.push(`保险公司：${data.company || '未填写'}`);
+    lines.push(`车牌号：${data.plate || '未填写'}`);
+    if (data.compulsoryRate > 0) {
+      lines.push(`交强险：保费 ${data.compulsoryAmount} 元，费率 ${data.compulsoryRate}%`);
+    }
+    if (data.commercialRate > 0) {
+      lines.push(`商业险：保费 ${data.commercialAmount} 元，费率 ${data.commercialRate}%`);
+    }
+    if (data.nonVehicleRate > 0) {
+      lines.push(`随车非车：保费 ${data.nonVehicleAmount} 元，费率 ${data.nonVehicleRate}%`);
+    }
+    if (data.vehicleTax > 0) {
+      lines.push(`车船税：${data.vehicleTax} 元`);
+    }
+
+    const confirmMsg = $('#confirmMessage');
+    confirmMsg.innerHTML = '<div style="text-align:left;font-size:14px;line-height:1.8;">' +
+      '<div style="font-weight:600;margin-bottom:8px;">请核对以下数据：</div>' +
+      lines.map(l => '<div>' + l + '</div>').join('') +
+      '</div>';
+
+    confirmOverlay.style.display = 'flex';
+
+    // 绑定确认按钮
+    const onOk = () => {
+      confirmOverlay.style.display = 'none';
+      confirmOk.removeEventListener('click', onOk);
+      confirmCancel.removeEventListener('click', onCancel);
+      doCalculate(data);
+    };
+    const onCancel = () => {
+      confirmOverlay.style.display = 'none';
+      confirmOk.removeEventListener('click', onOk);
+      confirmCancel.removeEventListener('click', onCancel);
+    };
+    confirmOk.addEventListener('click', onOk);
+    confirmCancel.addEventListener('click', onCancel);
+  }
+
+  function doCalculate(data) {
     const results = calculate(data);
     displayResults(results);
     resultSection.style.display = 'block';
@@ -233,7 +295,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
       resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
-  });
+  }
 
   // ====== Reset ======
   btnReset.addEventListener('click', () => {

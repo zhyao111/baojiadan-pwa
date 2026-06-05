@@ -396,6 +396,11 @@ input[type="number"] {
   box-shadow: 0 0 0 3px rgba(200,96,74,0.12);
 }
 
+.input-readonly {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 /* ========== Section Label ========== */
 .section-label {
   display: flex;
