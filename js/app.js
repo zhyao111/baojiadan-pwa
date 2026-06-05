@@ -852,6 +852,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // ---- 选择模型弹窗 ----
   function showSelectModelsDialog(availableModels, needCount) {
     return new Promise((resolve) => {
+      // 如果可用模型不够，只需要选所有可用的
+      const actualNeed = Math.min(needCount, availableModels.length);
 
       const overlay = document.createElement('div');
       overlay.className = 'confirm-overlay';
@@ -864,7 +866,7 @@ document.addEventListener('DOMContentLoaded', () => {
       dialog.style.overflow = 'auto';
 
       let html = '<div class="confirm-dialog-content">';
-      html += `<div class="confirm-dialog-title" style="color:#4CAF50;">➕ 请添加 ${needCount} 个模型</div>`;
+      html += `<div class="confirm-dialog-title" style="color:#4CAF50;">➕ 请添加 ${actualNeed} 个模型</div>`;
       html += `<div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">当前模型不足，请选择要参与识别的模型：</div>`;
 
       availableModels.forEach((item, i) => {
@@ -898,8 +900,8 @@ document.addEventListener('DOMContentLoaded', () => {
             item.querySelector('.select-checkbox').style.background = 'transparent';
             item.querySelector('.select-checkbox').innerHTML = '';
           } else {
-            if (selectedIndices.size >= needCount) {
-              showToast(`最多选择 ${needCount} 个模型`);
+            if (selectedIndices.size >= actualNeed) {
+              showToast(`最多选择 ${actualNeed} 个模型`);
               return;
             }
             selectedIndices.add(idx);
@@ -914,8 +916,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // 确定
       overlay.querySelector('#selectModelConfirm').addEventListener('click', (e) => {
         e.stopPropagation();
-        if (selectedIndices.size !== needCount) {
-          showToast(`请选择 ${needCount} 个模型`);
+        if (selectedIndices.size === 0) {
+          showToast('请至少选择 1 个模型');
           return;
         }
         document.body.removeChild(overlay);
