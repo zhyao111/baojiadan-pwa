@@ -2482,16 +2482,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     showToast(`正在测试 ${modelsToTest.length} 个模型...`);
 
+    // 获取一张测试图片
+    const imgSrc = imgPreview.src;
+    if (!imgSrc || imgPreviewWrap.style.display === 'none') {
+      showToast('请先上传一张图片用于测试');
+      return;
+    }
+
     const results = await Promise.allSettled(
       modelsToTest.map(async ({ provider: p, model }) => {
         const startTime = Date.now();
         try {
-          const originalModel = p.selectedModel;
-          p.selectedModel = model;
+          const base64 = imgSrc.split(',')[1] || '';
           const testProvider = { ...p, selectedModel: model };
-          const testFile = new File([''], 'test.jpg', { type: 'image/jpeg' });
-          const result = await callProviderAPI(testProvider, model, '', '', 'image/jpeg');
-          p.selectedModel = originalModel;
+          const result = await callProviderAPI(testProvider, model, imgSrc, base64, 'image/jpeg');
           return { provider: p.name || p.id, model, success: true, time: ((Date.now() - startTime) / 1000).toFixed(1) };
         } catch (e) {
           return { provider: p.name || p.id, model, success: false, error: e.message, time: ((Date.now() - startTime) / 1000).toFixed(1) };
