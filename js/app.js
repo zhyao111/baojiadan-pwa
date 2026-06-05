@@ -1236,7 +1236,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ====== Save Record ======
-  btnSaveRecord.addEventListener('click', () => {
+  btnSaveRecord.addEventListener('click', async () => {
     const data = getFormData();
     const results = calculate(data);
 
@@ -1251,12 +1251,69 @@ document.addEventListener('DOMContentLoaded', () => {
       plate: plateNumber.value || '未填写',
       time: new Date().toLocaleString('zh-CN'),
       ...data,
-      ...results
+      ...results,
+      localImage: null,
     };
+
+    // 保存图片到本地
+    if (imgPreview.src && imgPreviewWrap.style.display !== 'none') {
+      try {
+        const localPath = await saveImageToLocal(imgPreview.src, record.id);
+        record.localImage = localPath;
+      } catch (e) {
+        console.warn('图片保存到本地失败:', e);
+      }
+    }
 
     saveRecord(record);
     showToast('已保存到记录');
   });
+
+  async function saveImageToLocal(dataUrl, recordId) {
+    const { Filesystem } = window.Capacitor?.Plugins || {};
+    if (!Filesystem) return null;
+
+    // 确保目录存在
+    await Filesystem.mkdir({ path: 'chefeibao_images', directory: 'DATA', recursive: true });
+
+    // 从 dataUrl 提取 base64 数据
+    const base64Data = dataUrl.split(',')[1] || '';
+    const fileName = `img_${recordId}.jpg`;
+    const filePath = `chefeibao_images/${fileName}`;
+
+    await Filesystem.writeFile({
+      path: filePath,
+      data: base64Data,
+      directory: 'DATA',
+      encoding: 'base64',
+    });
+
+    return filePath;
+  }
+
+  async function deleteLocalImage(filePath) {
+    if (!filePath) return;
+    try {
+      const { Filesystem } = window.Capacitor?.Plugins || {};
+      if (!Filesystem) return;
+      await Filesystem.deleteFile({ path: filePath, directory: 'DATA' });
+    } catch (e) {
+      console.warn('删除本地图片失败:', e);
+    }
+  }
+
+  async function readLocalImage(filePath) {
+    if (!filePath) return null;
+    try {
+      const { Filesystem } = window.Capacitor?.Plugins || {};
+      if (!Filesystem) return null;
+      const result = await Filesystem.readFile({ path: filePath, directory: 'DATA', encoding: 'base64' });
+      return `data:image/jpeg;base64,${result.data}`;
+    } catch (e) {
+      console.warn('读取本地图片失败:', e);
+      return null;
+    }
+  }
 
   // ====== Copy Buttons ======
   btnCopyPlan.addEventListener('click', () => {
@@ -1271,7 +1328,11 @@ document.addEventListener('DOMContentLoaded', () => {
   btnClearAllRecords.addEventListener('click', () => {
     const records = getRecords();
     if (records.length === 0) return;
-    showConfirm('确定要清空全部历史记录吗？此操作不可撤销。', () => {
+    showConfirm('确定要清空全部历史记录吗？此操作不可撤销。', async () => {
+      // 删除所有本地图片
+      for (const r of records) {
+        if (r.localImage) await deleteLocalImage(r.localImage);
+      }
       localStorage.removeItem('chefeibao_records');
       recordSearchInput.value = '';
       renderRecords();
@@ -1464,9 +1525,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function deleteRecord(id) {
-    showConfirm('确定要删除这条记录吗？', () => {
-      const records = getRecords().filter((r) => r.id !== id);
-      localStorage.setItem('chefeibao_records', JSON.stringify(records));
+    showConfirm('确定要删除这条记录吗？', async () => {
+      const records = getRecords();
+      const record = records.find(r => r.id === id);
+      if (record && record.localImage) {
+        await deleteLocalImage(record.localImage);
+      }
+      const newRecords = records.filter((r) => r.id !== id);
+      localStorage.setItem('chefeibao_records', JSON.stringify(newRecords));
       renderRecords();
       showToast('已删除');
     });
@@ -1538,7 +1604,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function restoreRecordToForm(record) {
+  async function restoreRecordToForm(record) {
     // 填入数据
     insuranceCompany.value = record.company || '';
     plateNumber.value = record.plate || '';
@@ -1558,6 +1624,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // 恢复快速填写手续费比例
     if (record.compulsoryRate && record.commercialRate && record.nonVehicleRate) {
       quickRate.value = `${record.compulsoryRate}/${record.commercialRate}/${record.nonVehicleRate}`;
+    }
+
+    // 恢复图片
+    if (record.localImage) {
+      const imageDataUrl = await readLocalImage(record.localImage);
+      if (imageDataUrl) {
+        imgPreview.src = imageDataUrl;
+        imgPreviewWrap.style.display = 'block';
+        imgPreviewStatus.textContent = '已恢复图片';
+        imgPreviewStatus.className = 'img-preview-status';
+      }
     }
 
     // 切换到计算 tab
