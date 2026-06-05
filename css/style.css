@@ -1402,6 +1402,29 @@ input[type="number"] {
   box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
 
+.btn-test-dual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 6px 16px 0;
+  padding: 8px 14px;
+  background: var(--card-bg);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  width: fit-content;
+}
+
+.btn-test-dual:active {
+  background: var(--input-bg);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
 .failover-section-title {
   font-size: 0.8rem;
   font-weight: 600;
