@@ -613,6 +613,7 @@ document.addEventListener('DOMContentLoaded', () => {
           ],
         }],
         temperature: 0.1,
+        max_tokens: 1024,
       }),
     });
 
@@ -687,12 +688,51 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function fileToBase64(file) {
     return new Promise((resolve, reject) => {
+      // 如果图片小于 500KB 直接发送
+      if (file.size < 500 * 1024) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64 = reader.result.split(',')[1] || '';
+          resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+        return;
+      }
+
+      // 大图片压缩后再发送
       const reader = new FileReader();
       reader.onload = () => {
-        const result = reader.result;
-        // Strip data:mime;base64, prefix
-        const base64 = result.split(',')[1] || '';
-        resolve(base64);
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+
+          // 限制最大边长为 1600px
+          const MAX_SIZE = 1600;
+          let w = img.naturalWidth;
+          let h = img.naturalHeight;
+          if (w > MAX_SIZE || h > MAX_SIZE) {
+            if (w > h) {
+              h = Math.round(h * MAX_SIZE / w);
+              w = MAX_SIZE;
+            } else {
+              w = Math.round(w * MAX_SIZE / h);
+              h = MAX_SIZE;
+            }
+          }
+
+          canvas.width = w;
+          canvas.height = h;
+          ctx.drawImage(img, 0, 0, w, h);
+
+          // 压缩为 JPEG 80% 质量
+          const compressed = canvas.toDataURL('image/jpeg', 0.8);
+          const base64 = compressed.split(',')[1] || '';
+          resolve(base64);
+        };
+        img.onerror = reject;
+        img.src = reader.result;
       };
       reader.onerror = reject;
       reader.readAsDataURL(file);
