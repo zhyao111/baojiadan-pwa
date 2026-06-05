@@ -311,7 +311,7 @@
                   <rect x="8" y="8" width="8" height="8" rx="1" stroke="currentColor" stroke-width="1.6"/>
                 </svg>
               </span>
-              <span class="settings-menu-label">双重识别配置</span>
+              <span class="settings-menu-label">多重识别配置</span>
               <span class="settings-menu-badge" id="dualConfigBadge">1 个模型</span>
               <span class="settings-menu-arrow">&rsaquo;</span>
             </div>
@@ -425,7 +425,7 @@
         <div class="settings-subpage" id="subpageDualConfig" style="display:none;">
           <div class="subpage-header">
             <button class="subpage-back" id="btnBackFromDualConfig">&larr; 返回</button>
-            <span class="subpage-title">双重识别配置</span>
+            <span class="subpage-title">多重识别配置</span>
           </div>
 
           <div class="failover-controls">
@@ -444,6 +444,8 @@
                   <option value="1">1 个</option>
                   <option value="2" selected>2 个</option>
                   <option value="3">3 个</option>
+                  <option value="4">4 个</option>
+                  <option value="5">5 个</option>
                 </select>
               </div>
             </div>
@@ -466,17 +468,6 @@
               <option value="">选择模型...</option>
             </select>
             <button class="btn-add-model" id="btnAddDualModel" type="button">+ 添加</button>
-          </div>
-
-          <!-- 预览冲突弹窗 -->
-          <div style="margin-top:20px;">
-            <button class="btn btn-reset" id="btnPreviewConflict" type="button" style="width:100%;height:44px;font-size:13px;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;margin-right:4px;">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="1.8"/>
-                <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/>
-              </svg>
-              预览冲突选择弹窗
-            </button>
           </div>
         </div>
 

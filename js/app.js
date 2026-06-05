@@ -632,7 +632,7 @@ document.addEventListener('DOMContentLoaded', () => {
     vehicleTax: '车船税',
   };
 
-  function showConflictDialog(conflictFields, succeeded, forceShowViewImg) {
+  function showConflictDialog(conflictFields, succeeded) {
     return new Promise((resolve) => {
       // 创建弹窗
       const overlay = document.createElement('div');
@@ -673,7 +673,7 @@ document.addEventListener('DOMContentLoaded', () => {
       html += '</div>';
 
       // 查看图片按钮
-      const hasImg = forceShowViewImg || (imgPreview.src && imgPreviewWrap.style.display !== 'none');
+      const hasImg = imgPreview.src && imgPreviewWrap.style.display !== 'none';
       if (hasImg) {
         html += `<div id="conflictViewImg" style="display:flex;align-items:center;justify-content:center;gap:4px;font-size:13px;font-weight:500;color:var(--primary);background:var(--primary-light);border:1px solid rgba(200,96,74,0.2);border-radius:10px;padding:10px 16px;margin-bottom:12px;cursor:pointer;">`;
         html += `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><rect x="2" y="4" width="20" height="16" rx="3" stroke="currentColor" stroke-width="1.6"/><circle cx="8.5" cy="9.5" r="2" stroke="currentColor" stroke-width="1.4"/><path d="M2 16l5-5 4 4 3-3 6 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
@@ -1946,35 +1946,6 @@ document.addEventListener('DOMContentLoaded', () => {
     cfg.models.push(id);
     saveDualConfig(cfg);
     renderDualConfigUI();
-  });
-
-  // 预览冲突弹窗
-  const btnPreviewConflict = $('#btnPreviewConflict');
-  btnPreviewConflict.addEventListener('click', () => {
-    const mockResults = [
-      {
-        providerName: '小米', modelName: 'mimo-v2.5',
-        data: {
-          company: '中国人保', plate: '粤A12345',
-          compulsoryAmount: 950, compulsoryExpiry: '2025年9月15日',
-          commercialAmount: 3500, commercialExpiry: '2025年12月20日',
-          nonVehicleAmount: 800, nonVehicleExpiry: '2025年11月10日',
-          vehicleTax: 420,
-        }
-      },
-      {
-        providerName: '千问', modelName: 'qwen3.6-flash',
-        data: {
-          company: '人保财险', plate: '粤A12345',
-          compulsoryAmount: 950.5, compulsoryExpiry: '2025年9月15日',
-          commercialAmount: 3480, commercialExpiry: '2025年12月20日',
-          nonVehicleAmount: 850, nonVehicleExpiry: '2025年11月10日',
-          vehicleTax: 420,
-        }
-      }
-    ];
-    const mockConflicts = ['company', 'compulsoryAmount', 'commercialAmount', 'nonVehicleAmount'];
-    showConflictDialog(mockConflicts, mockResults, true);
   });
 
   // 初始化 badge
