@@ -304,6 +304,17 @@
               <span class="settings-menu-badge" id="activeProviderBadge" style="display:none;"></span>
               <span class="settings-menu-arrow">&rsaquo;</span>
             </div>
+            <div class="settings-menu-item" id="btnGoDualConfig">
+              <span class="settings-menu-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <path d="M8 3v4M16 3v4M3 8h4M17 8h4M8 17v4M16 17v4M3 16h4M17 16h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                  <rect x="8" y="8" width="8" height="8" rx="1" stroke="currentColor" stroke-width="1.6"/>
+                </svg>
+              </span>
+              <span class="settings-menu-label">双重识别配置</span>
+              <span class="settings-menu-badge" id="dualConfigBadge">1 个模型</span>
+              <span class="settings-menu-arrow">&rsaquo;</span>
+            </div>
             <div class="settings-menu-item" id="btnGoFailover">
               <span class="settings-menu-icon">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
@@ -407,6 +418,54 @@
               <option value="">选择供应商...</option>
             </select>
             <button class="btn-add-model" id="btnAddFailover" type="button">+ 加入队列</button>
+          </div>
+        </div>
+
+        <!-- 双重识别配置子页面 -->
+        <div class="settings-subpage" id="subpageDualConfig" style="display:none;">
+          <div class="subpage-header">
+            <button class="subpage-back" id="btnBackFromDualConfig">&larr; 返回</button>
+            <span class="subpage-title">双重识别配置</span>
+          </div>
+
+          <div class="failover-controls">
+            <div class="failover-switch-row">
+              <label class="toggle-switch">
+                <input type="checkbox" id="chkDualRecognize" checked>
+                <span class="toggle-track"></span>
+                <span class="toggle-label">启用双重识别</span>
+              </label>
+            </div>
+
+            <div class="failover-options">
+              <div class="failover-option">
+                <label class="failover-option-label">识别模型数</label>
+                <select id="selectDualCount" class="failover-mini-select">
+                  <option value="1">1 个</option>
+                  <option value="2" selected>2 个</option>
+                  <option value="3">3 个</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- 已配置的模型列表 -->
+          <div class="failover-section-title">参与识别的模型</div>
+          <div id="dualModelList" class="failover-queue-list"></div>
+
+          <div class="failover-hint">
+            <div class="failover-hint-icon">💡</div>
+            <div class="failover-hint-text">
+              同时使用多个模型识别同一张图片，逐字段对比取最优结果。<br>模型越多准确率越高，但耗时等于最慢的那个。
+            </div>
+          </div>
+
+          <!-- 添加模型 -->
+          <div class="failover-add-row">
+            <select class="form-select" id="selectDualProvider" style="flex:1;">
+              <option value="">选择模型...</option>
+            </select>
+            <button class="btn-add-model" id="btnAddDualModel" type="button">+ 添加</button>
           </div>
         </div>
 

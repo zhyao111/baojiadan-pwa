@@ -61,12 +61,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnGoRecords = $('#btnGoRecords');
   const btnGoModels = $('#btnGoModels');
   const btnGoFailover = $('#btnGoFailover');
+  const btnGoDualConfig = $('#btnGoDualConfig');
   const subpageRecords = $('#subpageRecords');
   const subpageModels = $('#subpageModels');
   const subpageFailover = $('#subpageFailover');
+  const subpageDualConfig = $('#subpageDualConfig');
   const btnBackFromRecords = $('#btnBackFromRecords');
   const btnBackFromModels = $('#btnBackFromModels');
   const btnBackFromFailover = $('#btnBackFromFailover');
+  const btnBackFromDualConfig = $('#btnBackFromDualConfig');
 
   // Provider Management
   const providerListEl = $('#providerList');
@@ -158,18 +161,27 @@ document.addEventListener('DOMContentLoaded', () => {
       subpageRecords.style.display = 'block';
       subpageModels.style.display = 'none';
       subpageFailover.style.display = 'none';
+      subpageDualConfig.style.display = 'none';
       renderRecords();
     } else if (name === 'models') {
       subpageModels.style.display = 'block';
       subpageRecords.style.display = 'none';
       subpageFailover.style.display = 'none';
+      subpageDualConfig.style.display = 'none';
       renderProviders();
       renderFailoverUI();
     } else if (name === 'failover') {
       subpageFailover.style.display = 'block';
       subpageModels.style.display = 'none';
       subpageRecords.style.display = 'none';
+      subpageDualConfig.style.display = 'none';
       renderFailoverUI();
+    } else if (name === 'dualConfig') {
+      subpageDualConfig.style.display = 'block';
+      subpageModels.style.display = 'none';
+      subpageRecords.style.display = 'none';
+      subpageFailover.style.display = 'none';
+      renderDualConfigUI();
     }
   }
 
@@ -178,14 +190,17 @@ document.addEventListener('DOMContentLoaded', () => {
     subpageRecords.style.display = 'none';
     subpageModels.style.display = 'none';
     subpageFailover.style.display = 'none';
+    subpageDualConfig.style.display = 'none';
   }
 
   btnGoRecords.addEventListener('click', () => showSubpage('records'));
   btnGoFailover.addEventListener('click', () => showSubpage('failover'));
   btnGoModels.addEventListener('click', () => showSubpage('models'));
+  btnGoDualConfig.addEventListener('click', () => showSubpage('dualConfig'));
   btnBackFromRecords.addEventListener('click', hideSubpages);
   btnBackFromModels.addEventListener('click', hideSubpages);
   btnBackFromFailover.addEventListener('click', hideSubpages);
+  btnBackFromDualConfig.addEventListener('click', hideSubpages);
 
   // ====== Quick Fill Rate ======
   quickRate.addEventListener('blur', () => {
@@ -466,15 +481,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const base64 = await fileToBase64(file);
       const dataUrl = `data:${file.type || 'image/jpeg'};base64,${base64}`;
 
-      // 获取所有可用的提供商
+      // 获取双重识别配置
+      const dualCfg = getDualConfig();
       const allProviders = getProviders().filter(p => p.models && p.models.length > 0);
-      if (allProviders.length === 0) {
-        throw new Error('请先配置识别模型');
-      }
 
-      // 如果只有一个提供商，走原有逻辑
-      if (allProviders.length === 1) {
-        const result = await tryWithFailover(allProviders[0], file, base64, dataUrl);
+      // 如果双重识别未启用或只有一个模型，走原有逻辑
+      if (!dualCfg.enabled || dualCfg.models.length <= 1) {
+        const result = await tryWithFailover(provider, file, base64, dataUrl);
         imgPreviewStatus.textContent = `${result.providerName} · ${result.modelName} — 识别完成`;
         imgPreviewStatus.className = 'img-preview-status';
         applyOCRResult(result.data);
@@ -482,9 +495,25 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      // 多个提供商：同时识别，取最多2个
-      const providersToUse = allProviders.slice(0, 2);
-      imgPreviewStatus.textContent = '正在双重识别中...';
+      // 获取配置的模型对应的提供商
+      const providers = getProviders();
+      const providersToUse = dualCfg.models
+        .map(id => providers.find(p => p.id === id))
+        .filter(p => p && p.models && p.models.length > 0);
+
+      if (providersToUse.length <= 1) {
+        // 配置的模型不够，降级为单模型
+        const p = providersToUse[0] || provider;
+        const result = await tryWithFailover(p, file, base64, dataUrl);
+        imgPreviewStatus.textContent = `${result.providerName} · ${result.modelName} — 识别完成`;
+        imgPreviewStatus.className = 'img-preview-status';
+        applyOCRResult(result.data);
+        showToast('识别完成，已自动填入数据');
+        return;
+      }
+
+      // 多个模型：同时识别
+      imgPreviewStatus.textContent = '正在多重识别中...';
       imgPreviewStatus.className = 'img-preview-status loading';
 
       const results = await Promise.allSettled(
@@ -510,15 +539,16 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      // 两个都成功：逐字段对比合并
-      const merged = mergeOCRResults(succeeded[0].data, succeeded[1].data);
+      // 多个都成功：逐字段对比合并
+      let merged = succeeded[0].data;
+      for (let i = 1; i < succeeded.length; i++) {
+        merged = mergeOCRResults(merged, succeeded[i].data).data;
+      }
       const names = succeeded.map(r => `${r.providerName}·${r.modelName}`).join(' vs ');
-      imgPreviewStatus.textContent = `${names} — 双重识别完成`;
+      imgPreviewStatus.textContent = `${names} — 多重识别完成`;
       imgPreviewStatus.className = 'img-preview-status';
-      applyOCRResult(merged.data);
-      showToast(merged.conflictCount > 0
-        ? `识别完成，${merged.conflictCount} 个字段有差异已标红`
-        : '双重识别一致，已自动填入数据');
+      applyOCRResult(merged);
+      showToast('多重识别完成，已自动填入数据');
     } catch (err) {
       console.error('OCR error:', err);
       imgPreviewStatus.textContent = '识别失败：' + (err.message || '未知错误');
@@ -1663,6 +1693,102 @@ document.addEventListener('DOMContentLoaded', () => {
     saveFailoverConfig(cfg);
     renderFailoverUI();
   });
+
+  // ====== Dual Recognition Config ======
+  const DUAL_KEY = 'chefeibao_dual';
+  const chkDualRecognize = $('#chkDualRecognize');
+  const selectDualCount = $('#selectDualCount');
+  const dualModelListEl = $('#dualModelList');
+  const selectDualProvider = $('#selectDualProvider');
+  const btnAddDualModel = $('#btnAddDualModel');
+  const dualConfigBadge = $('#dualConfigBadge');
+
+  function getDualConfig() {
+    try { return JSON.parse(localStorage.getItem(DUAL_KEY) || '{"enabled":true,"count":2,"models":[]}'); }
+    catch { return { enabled: true, count: 2, models: [] }; }
+  }
+
+  function saveDualConfig(cfg) {
+    localStorage.setItem(DUAL_KEY, JSON.stringify(cfg));
+    updateDualBadge();
+  }
+
+  function updateDualBadge() {
+    const cfg = getDualConfig();
+    const count = cfg.enabled ? cfg.models.length || cfg.count : 1;
+    dualConfigBadge.textContent = `${count} 个模型`;
+  }
+
+  function renderDualConfigUI() {
+    const cfg = getDualConfig();
+    chkDualRecognize.checked = cfg.enabled;
+    selectDualCount.value = cfg.count;
+
+    // 渲染模型列表
+    const providers = getProviders();
+    if (cfg.models.length === 0) {
+      dualModelListEl.innerHTML = '<p class="failover-queue-empty">暂无模型，请添加</p>';
+    } else {
+      dualModelListEl.innerHTML = '';
+      cfg.models.forEach((id, i) => {
+        const p = providers.find((x) => x.id === id);
+        if (!p) return;
+        const model = p.selectedModel || (p.models && p.models[0]) || '';
+        const item = document.createElement('div');
+        item.className = 'failover-queue-item';
+        item.innerHTML = `
+          <span class="failover-queue-order">${i + 1}</span>
+          <div class="failover-queue-info">
+            <div class="failover-queue-name">${escapeHtml(p.name || p.id)}</div>
+            <div class="failover-queue-model">${escapeHtml(model)}</div>
+          </div>
+          <button class="failover-queue-remove" data-id="${id}" title="移除">&times;</button>
+        `;
+        item.querySelector('.failover-queue-remove').addEventListener('click', () => {
+          const newModels = cfg.models.filter((x) => x !== id);
+          saveDualConfig({ ...cfg, models: newModels });
+          renderDualConfigUI();
+        });
+        dualModelListEl.appendChild(item);
+      });
+    }
+
+    // 填充可用模型下拉
+    selectDualProvider.innerHTML = '<option value="">选择模型...</option>';
+    providers.forEach((p) => {
+      if (cfg.models.includes(p.id)) return;
+      const model = p.selectedModel || (p.models && p.models[0]) || '';
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = `${p.name || p.id} · ${model}`;
+      selectDualProvider.appendChild(opt);
+    });
+  }
+
+  chkDualRecognize.addEventListener('change', () => {
+    saveDualConfig({ ...getDualConfig(), enabled: chkDualRecognize.checked });
+  });
+
+  selectDualCount.addEventListener('change', () => {
+    saveDualConfig({ ...getDualConfig(), count: parseInt(selectDualCount.value) });
+  });
+
+  btnAddDualModel.addEventListener('click', () => {
+    const id = selectDualProvider.value;
+    if (!id) { showToast('请选择模型'); return; }
+    const cfg = getDualConfig();
+    const maxCount = cfg.count || 2;
+    if (cfg.models.length >= maxCount) {
+      showToast(`最多添加 ${maxCount} 个模型`);
+      return;
+    }
+    cfg.models.push(id);
+    saveDualConfig(cfg);
+    renderDualConfigUI();
+  });
+
+  // 初始化 badge
+  updateDualBadge();
 
   // Provider card actions (event delegation, registered once)
   providerListEl.addEventListener('click', (e) => {
