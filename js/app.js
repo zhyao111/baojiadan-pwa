@@ -452,38 +452,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ---- OCR Prompt ----
-  const OCR_PROMPT = `你是一个车险报价单识别助手。请仔细识别这张图片中的车险报价信息，提取以下字段并以 JSON 格式返回：
-{
-  "company": "保险公司名称",
-  "plate": "车牌号",
-  "compulsoryAmount": 交强险保费金额(数字),
-  "compulsoryRate": 交强险手续费比例(数字),
-  "compulsoryExpiry": "交强险保险到期时间，格式如：2025年3月15日",
-  "commercialAmount": 商业险保费金额(数字),
-  "commercialRate": 商业险手续费比例(数字),
-  "commercialExpiry": "商业险保险到期时间，格式如：2025年3月15日",
-  "nonVehicleAmount": 随车非车保费金额(数字),
-  "nonVehicleRate": 随车非车保费手续费比例(数字),
-  "nonVehicleExpiry": "随车非车保险到期时间，格式如：2025年3月15日",
-  "vehicleTax": 车船税金额(数字),
-  "sections": {
-    "compulsory": { "y_start": 0.1, "y_end": 0.3 },
-    "commercial": { "y_start": 0.3, "y_end": 0.5 },
-    "nonVehicle": { "y_start": 0.5, "y_end": 0.7 },
-    "summary": { "y_start": 0.7, "y_end": 0.9 }
-  }
-}
-识别规则：
-- 交强险：直接提取保费金额、手续费比例和保险到期时间
-- 商业险：直接提取保费金额、手续费比例和保险到期时间
-- 随车非车保费：图片中除了交强险和商业险以外的所有其他保险项目（如驾意险、座位险、三者险、车损险、玻璃险、划痕险、涉水险、自燃险等），将它们的保费金额全部加总填入 nonVehicleAmount，手续费比例填入 nonVehicleRate，到期时间填入 nonVehicleExpiry
-- 车船税：直接提取
-- sections 字段：返回各保险板块和合计区域在图片中的垂直位置比例（0-1），y_start 为区域顶部，y_end 为区域底部。summary 为合计/总计/保费合计等汇总区域
-注意：
-- 所有金额单位为元，手续费比例为百分比数字（如 5 表示 5%）
-- 到期时间格式统一为"XXXX年X月X日"，如"2025年3月15日"，必须包含年份
-- 如果某个字段在图片中找不到，对应值填 0 或空字符串
-- 只返回 JSON，不要返回其他内容`;
+  const OCR_PROMPT = `识别图片中的车险报价信息，返回JSON：
+{"company":"保险公司","plate":"车牌号","compulsoryAmount":数字,"compulsoryRate":数字,"compulsoryExpiry":"2025年3月15日","commercialAmount":数字,"commercialRate":数字,"commercialExpiry":"2025年3月15日","nonVehicleAmount":数字,"nonVehicleRate":数字,"nonVehicleExpiry":"2025年3月15日","vehicleTax":数字}
+规则：
+- 随车非车保费=除交强险商业险外所有其他险种保费总和
+- 到期时间必须含年月日，格式XXXX年X月X日
+- 未找到的字段填0或空字符串
+- 只返回JSON`;
 
   // ---- Recognize Image ----
   async function recognizeImage(file, provider) {
@@ -613,7 +588,7 @@ document.addEventListener('DOMContentLoaded', () => {
           ],
         }],
         temperature: 0.1,
-        max_tokens: 2048,
+        max_tokens: 4096,
       }),
     });
 
@@ -678,7 +653,6 @@ document.addEventListener('DOMContentLoaded', () => {
         nonVehicleRate: num(parsed.nonVehicleRate),
         nonVehicleExpiry: parsed.nonVehicleExpiry || '',
         vehicleTax: num(parsed.vehicleTax),
-        sections: parsed.sections || null,
       };
     } catch (e) {
       // JSON 可能被截断，尝试逐字段提取
@@ -700,7 +674,6 @@ document.addEventListener('DOMContentLoaded', () => {
         nonVehicleRate: num(extract('nonVehicleRate')),
         nonVehicleExpiry: extract('nonVehicleExpiry'),
         vehicleTax: num(extract('vehicleTax')),
-        sections: null,
       };
     }
   }
