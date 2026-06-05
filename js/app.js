@@ -4,6 +4,21 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+  // ====== Status Bar Configuration ======
+  const { StatusBar } = window.Capacitor?.Plugins || {};
+  if (StatusBar) {
+    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#C8604A';
+    StatusBar.setStyle({ style: isDark ? 'DARK' : 'LIGHT' });
+    StatusBar.setBackgroundColor({ color: isDark ? '#000000' : primaryColor });
+
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+      const color = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#C8604A';
+      StatusBar.setStyle({ style: e.matches ? 'DARK' : 'LIGHT' });
+      StatusBar.setBackgroundColor({ color: e.matches ? '#000000' : color });
+    });
+  }
+
   // ====== DOM Elements ======
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => document.querySelectorAll(sel);
