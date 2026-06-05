@@ -288,12 +288,12 @@ document.addEventListener('DOMContentLoaded', () => {
     lines.push(`车牌号：${data.plate || '未填写'}`);
     if (data.compulsoryRate > 0) {
       let line = `交强险：保费 ${data.compulsoryAmount} 元，费率 ${data.compulsoryRate}%`;
-      if (data.compulsoryExpiry) line += `，到期 ${data.compulsoryExpiry}`;
+      if (data.compulsoryExpiry) line += `，到期：${data.compulsoryExpiry}`;
       lines.push(line);
     }
     if (data.commercialRate > 0) {
       let line = `商业险：保费 ${data.commercialAmount} 元，费率 ${data.commercialRate}%`;
-      if (data.commercialExpiry) line += `，到期 ${data.commercialExpiry}`;
+      if (data.commercialExpiry) line += `，到期：${data.commercialExpiry}`;
       lines.push(line);
     }
     if (data.nonVehicleRate > 0) {
