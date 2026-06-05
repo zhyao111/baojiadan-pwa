@@ -309,27 +309,15 @@ document.addEventListener('DOMContentLoaded', () => {
   btnCalculate.addEventListener('click', () => {
     const data = getFormData();
 
-    // 如果保险公司为空，跳转到保险公司输入框并调出键盘
-    if (!insuranceCompany.value.trim()) {
-      showToast('请先填写保险公司');
-      insuranceCompany.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setTimeout(() => insuranceCompany.focus(), 300);
-      return;
-    }
+    // 检查必填项
+    const missing = [];
+    if (!insuranceCompany.value.trim()) missing.push({ label: '保险公司', el: insuranceCompany });
+    if (!plateNumber.value.trim()) missing.push({ label: '车牌号', el: plateNumber });
+    if (!quickRate.value.trim()) missing.push({ label: '手续费比例', el: quickRate });
 
-    // 如果车牌号为空，跳转到车牌号输入框并调出键盘
-    if (!plateNumber.value.trim()) {
-      showToast('请先填写车牌号');
-      plateNumber.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setTimeout(() => plateNumber.focus(), 300);
-      return;
-    }
-
-    // 保险公司有值但快速填写手续费比例为空，跳转到快速填写
-    if (!quickRate.value.trim()) {
-      showToast('请先填写手续费比例');
-      quickRate.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setTimeout(() => quickRate.focus(), 300);
+    // 有未填项：弹窗显示所有未填项
+    if (missing.length > 0) {
+      showMissingFieldsDialog(missing);
       return;
     }
 
@@ -362,6 +350,54 @@ document.addEventListener('DOMContentLoaded', () => {
       a.nonVehicleAmount === b.nonVehicleAmount &&
       a.nonVehicleRate === b.nonVehicleRate &&
       a.vehicleTax === b.vehicleTax;
+  }
+
+  function showMissingFieldsDialog(missing) {
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.style.zIndex = '1100';
+
+    const dialog = document.createElement('div');
+    dialog.className = 'confirm-dialog';
+    dialog.style.maxWidth = '300px';
+
+    let html = '<div style="text-align:left;">';
+    html += '<div style="font-weight:600;margin-bottom:12px;font-size:15px;color:#E74C3C;">⚠️ 请填写以下必填项</div>';
+
+    missing.forEach((item, i) => {
+      html += `<div class="missing-field-item" data-idx="${i}" style="display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:6px;background:#FFF5F5;border-radius:10px;border:1.5px solid #F5D6D0;cursor:pointer;transition:all 0.15s;">`;
+      html += `<span style="width:22px;height:22px;border-radius:50%;background:#E74C3C;color:#fff;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${i + 1}</span>`;
+      html += `<span style="font-weight:500;">${item.label}</span>`;
+      html += `<span style="margin-left:auto;color:#E74C3C;font-size:12px;">去填写 →</span>`;
+      html += '</div>';
+    });
+
+    html += '<div style="display:flex;justify-content:flex-end;margin-top:14px;">';
+    html += '<button class="confirm-btn confirm-cancel" id="missingFieldsClose" style="width:100%;">知道了</button>';
+    html += '</div>';
+    html += '</div>';
+
+    dialog.innerHTML = html;
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+
+    // 点击某个未填项，跳转到对应输入框
+    overlay.querySelectorAll('.missing-field-item').forEach((item) => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = parseInt(item.dataset.idx, 10);
+        const el = missing[idx].el;
+        document.body.removeChild(overlay);
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => el.focus(), 300);
+      });
+    });
+
+    // 关闭
+    overlay.querySelector('#missingFieldsClose').addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.body.removeChild(overlay);
+    });
   }
 
   function parseQuickRate(str) {
@@ -1448,13 +1484,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // ====== Copy Buttons ======
+  // ====== Copy & Share Buttons ======
   btnCopyPlan.addEventListener('click', () => {
     const data = getFormData();
     const results = calculate(data);
     const text = formatPlanText(data, results);
     copyToClipboard(text);
     showToast('已复制文案');
+  });
+
+  const btnShareResult = $('#btnShareResult');
+  btnShareResult.addEventListener('click', async () => {
+    const data = getFormData();
+    const results = calculate(data);
+    const text = formatPlanText(data, results);
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: '车险报价单', text: text });
+      } catch (e) {
+        if (e.name !== 'AbortError') {
+          copyToClipboard(text);
+          showToast('已复制到剪贴板');
+        }
+      }
+    } else {
+      copyToClipboard(text);
+      showToast('已复制到剪贴板，可手动粘贴分享');
+    }
   });
 
   // ====== Clear All Records ======
