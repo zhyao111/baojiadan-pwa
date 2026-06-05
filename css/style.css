@@ -1889,6 +1889,41 @@ input[type="number"] {
 .card:nth-child(8) { animation-delay: 0.14s; }
 .card:nth-child(9) { animation-delay: 0.16s; }
 
+/* ========== Conflict Dialog ========== */
+.conflict-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  margin-bottom: 4px;
+  background: var(--card-bg);
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.conflict-option.selected {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+.conflict-view-img-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary);
+  background: var(--primary-light);
+  border: 1px solid rgba(200,96,74,0.2);
+  border-radius: 10px;
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+
 /* ========== Dark Mode ========== */
 @media (prefers-color-scheme: dark) {
   :root {
@@ -2001,5 +2036,26 @@ input[type="number"] {
 
   .scroll-area::-webkit-scrollbar {
     background: transparent;
+  }
+
+  /* Conflict Dialog Dark Mode */
+  .conflict-option {
+    background: #333333 !important;
+    border-color: #555 !important;
+    color: var(--text) !important;
+  }
+
+  .conflict-option.selected {
+    background: #4A2A1A !important;
+    border-color: var(--primary) !important;
+  }
+
+  .confirm-dialog {
+    background: var(--card-bg) !important;
+    color: var(--text) !important;
+  }
+
+  .confirm-message {
+    color: var(--text) !important;
   }
 }

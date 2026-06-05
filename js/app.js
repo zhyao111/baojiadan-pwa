@@ -773,21 +773,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
       let html = '<div style="text-align:left;font-size:14px;">';
       html += '<div style="font-weight:600;margin-bottom:10px;color:#E74C3C;">⚠️ 以下字段两个模型识别结果不一致</div>';
-      html += '<div style="font-size:12px;color:#999;margin-bottom:12px;">请点击您认为正确的值</div>';
+      html += '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">请点击您认为正确的值</div>';
 
       conflictFields.forEach((f, idx) => {
         const label = FIELD_LABELS[f] || f;
         const values = succeeded.map(r => r.data[f]);
 
-        html += `<div style="background:#FFF5F5;border-radius:10px;padding:10px 12px;margin-bottom:8px;">`;
+        html += `<div style="background:var(--primary-light);border-radius:10px;padding:10px 12px;margin-bottom:8px;">`;
         html += `<div style="font-weight:600;color:#E74C3C;margin-bottom:6px;font-size:13px;">${label}</div>`;
 
         values.forEach((val, vi) => {
           const displayVal = (val === 0 || val === '') ? '未识别到' : val;
-          html += `<div class="conflict-option" data-field="${f}" data-value="${val}" data-idx="${idx}" `;
-          html += `style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;margin-bottom:4px;background:#fff;border-radius:8px;border:1.5px solid #F5E6E0;cursor:pointer;transition:all 0.15s;">`;
-          html += `<span style="color:#999;font-size:12px;">${models[vi]}</span>`;
-          html += `<span style="font-weight:600;">${displayVal}</span>`;
+          html += `<div class="conflict-option" data-field="${f}" data-value="${val}" data-idx="${idx}">`;
+          html += `<span style="color:var(--text-secondary);font-size:12px;">${models[vi]}</span>`;
+          html += `<span style="font-weight:600;color:var(--text);">${displayVal}</span>`;
           html += `</div>`;
         });
 
@@ -799,7 +798,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // 查看图片按钮
       const hasImg = imgPreview.src && imgPreviewWrap.style.display !== 'none';
       if (hasImg) {
-        html += `<div id="conflictViewImg" style="display:flex;align-items:center;justify-content:center;gap:4px;font-size:13px;font-weight:500;color:var(--primary);background:var(--primary-light);border:1px solid rgba(200,96,74,0.2);border-radius:10px;padding:10px 16px;margin-bottom:12px;cursor:pointer;">`;
+        html += `<div id="conflictViewImg" class="conflict-view-img-btn">`;
         html += `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><rect x="2" y="4" width="20" height="16" rx="3" stroke="currentColor" stroke-width="1.6"/><circle cx="8.5" cy="9.5" r="2" stroke="currentColor" stroke-width="1.4"/><path d="M2 16l5-5 4 4 3-3 6 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
         html += `查看图片`;
         html += `</div>`;
@@ -830,11 +829,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
           // 高亮选中的，取消其他
           overlay.querySelectorAll(`.conflict-option[data-field="${f}"]`).forEach(o => {
-            o.style.borderColor = '#F5E6E0';
-            o.style.background = '#fff';
+            o.classList.remove('selected');
           });
-          opt.style.borderColor = '#C8604A';
-          opt.style.background = '#FDEEE8';
+          opt.classList.add('selected');
         });
       });
 
@@ -842,8 +839,7 @@ document.addEventListener('DOMContentLoaded', () => {
       conflictFields.forEach(f => {
         const first = overlay.querySelector(`.conflict-option[data-field="${f}"]`);
         if (first) {
-          first.style.borderColor = '#C8604A';
-          first.style.background = '#FDEEE8';
+          first.classList.add('selected');
         }
       });
 
