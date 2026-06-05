@@ -2354,4 +2354,63 @@ document.addEventListener('DOMContentLoaded', () => {
   // ====== Init ======
   renderRecords();
   renderProviders();
+
+  // ====== Back Button Handler ======
+  const { App } = window.Capacitor?.Plugins || {};
+  if (App) {
+    App.addListener('backButton', ({ canGoBack }) => {
+      // 1. 关闭冲突弹窗
+      const conflictOverlay = document.querySelector('.confirm-overlay[style*="z-index: 1100"]');
+      if (conflictOverlay) {
+        conflictOverlay.remove();
+        return;
+      }
+
+      // 2. 关闭费率编辑弹窗
+      const rateOverlay = document.querySelector('.confirm-overlay[style*="z-index: 1100"]');
+      if (rateOverlay) {
+        rateOverlay.remove();
+        return;
+      }
+
+      // 3. 关闭确认弹窗
+      if (confirmOverlay.style.display === 'flex') {
+        confirmOverlay.style.display = 'none';
+        return;
+      }
+
+      // 4. 关闭图片查看器
+      if (imgViewerOverlay.style.display === 'block') {
+        imgViewerOverlay.style.display = 'none';
+        return;
+      }
+
+      // 5. 关闭提供商弹窗
+      if (providerModal.style.display === 'flex') {
+        closeProviderModal();
+        return;
+      }
+
+      // 6. 返回子页面
+      if (subpageRecords.style.display === 'block' ||
+          subpageModels.style.display === 'block' ||
+          subpageDualConfig.style.display === 'block') {
+        hideSubpages();
+        return;
+      }
+
+      // 7. 切换到计算 Tab
+      const activeTab = document.querySelector('.tab-content.active');
+      if (activeTab && activeTab.id === 'tabSettings') {
+        navItems.forEach(item => item.classList.remove('active'));
+        document.querySelector('[data-tab="tabCalc"]').classList.add('active');
+        tabContents.forEach(tab => tab.classList.remove('active'));
+        document.getElementById('tabCalc').classList.add('active');
+        return;
+      }
+
+      // 8. 退出应用
+      App.exitApp();
+    });
+  }
 });
