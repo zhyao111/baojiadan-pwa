@@ -1625,7 +1625,7 @@ input[type="number"] {
   color: var(--text-secondary);
   margin-top: 10px;
   line-height: 1.6;
-  padding-right: 80px;
+  padding-right: 90px;
   background: #FAFAFA;
   padding: 10px 12px;
   border-radius: 8px;
@@ -1633,7 +1633,7 @@ input[type="number"] {
 
 .record-delete {
   position: absolute;
-  bottom: 14px;
+  bottom: 16px;
   right: 16px;
   height: 34px;
   padding: 0 14px;
