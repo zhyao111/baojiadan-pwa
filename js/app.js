@@ -359,21 +359,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const dialog = document.createElement('div');
     dialog.className = 'confirm-dialog';
-    dialog.style.maxWidth = '300px';
+    dialog.style.maxWidth = '320px';
+    dialog.style.maxHeight = '80vh';
+    dialog.style.overflow = 'auto';
 
     let html = '<div style="text-align:left;">';
     html += '<div style="font-weight:600;margin-bottom:12px;font-size:15px;color:#E74C3C;">⚠️ 请填写以下必填项</div>';
 
     missing.forEach((item, i) => {
-      html += `<div class="missing-field-item" data-idx="${i}" style="display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:6px;background:#FFF5F5;border-radius:10px;border:1.5px solid #F5D6D0;cursor:pointer;transition:all 0.15s;">`;
-      html += `<span style="width:22px;height:22px;border-radius:50%;background:#E74C3C;color:#fff;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${i + 1}</span>`;
-      html += `<span style="font-weight:500;">${item.label}</span>`;
-      html += `<span style="margin-left:auto;color:#E74C3C;font-size:12px;">去填写 →</span>`;
+      const inputType = item.el.type === 'number' ? 'number' : 'text';
+      const placeholder = item.el.placeholder || '';
+      html += `<div style="margin-bottom:12px;">`;
+      html += `<label style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:6px;display:block;">${item.label}</label>`;
+      html += `<input type="${inputType}" class="missing-field-input" data-idx="${i}" placeholder="${placeholder}" step="0.01" min="0" style="width:100%;height:42px;background:var(--input-bg);border:1.5px solid var(--border);border-radius:10px;padding:0 14px;font-size:14px;outline:none;box-sizing:border-box;">`;
       html += '</div>';
     });
 
-    html += '<div style="display:flex;justify-content:flex-end;margin-top:14px;">';
-    html += '<button class="confirm-btn confirm-cancel" id="missingFieldsClose" style="width:100%;">知道了</button>';
+    html += '<div style="display:flex;gap:10px;margin-top:16px;">';
+    html += '<button class="confirm-btn confirm-cancel" id="missingFieldsCancel" style="flex:1;">取消</button>';
+    html += '<button class="confirm-btn confirm-ok" id="missingFieldsOk" style="flex:1;">确定</button>';
     html += '</div>';
     html += '</div>';
 
@@ -381,20 +385,25 @@ document.addEventListener('DOMContentLoaded', () => {
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
 
-    // 点击某个未填项，跳转到对应输入框
-    overlay.querySelectorAll('.missing-field-item').forEach((item) => {
-      item.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const idx = parseInt(item.dataset.idx, 10);
-        const el = missing[idx].el;
-        document.body.removeChild(overlay);
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        setTimeout(() => el.focus(), 300);
+    // 自动聚焦第一个输入框
+    const firstInput = overlay.querySelector('.missing-field-input');
+    if (firstInput) setTimeout(() => firstInput.focus(), 100);
+
+    // 确定：同步值到计算界面
+    overlay.querySelector('#missingFieldsOk').addEventListener('click', (e) => {
+      e.stopPropagation();
+      overlay.querySelectorAll('.missing-field-input').forEach((input) => {
+        const idx = parseInt(input.dataset.idx, 10);
+        const val = input.value.trim();
+        if (val) {
+          missing[idx].el.value = val;
+        }
       });
+      document.body.removeChild(overlay);
     });
 
-    // 关闭
-    overlay.querySelector('#missingFieldsClose').addEventListener('click', (e) => {
+    // 取消
+    overlay.querySelector('#missingFieldsCancel').addEventListener('click', (e) => {
       e.stopPropagation();
       document.body.removeChild(overlay);
     });
