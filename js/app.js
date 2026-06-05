@@ -1976,7 +1976,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="record-plate">${escapeHtml(r.plate || '未填写')}</div>
           </div>
           <div class="record-item-meta">
-            <div class="record-time">${escapeHtml(r.time)}</div>
+            <div class="record-time">${escapeHtml(formatRecordTime(r.time))}</div>
           </div>
         </div>
         <div class="record-amount">${formatMoney(r.afterTax || 0)}</div>
@@ -2063,6 +2063,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     hideSubpages();
     showToast('已恢复记录数据');
+  }
+
+  function formatRecordTime(timeStr) {
+    if (!timeStr) return '';
+    // 如果已经只有年月日，直接返回
+    if (!timeStr.includes(':') && !timeStr.includes('时')) return timeStr;
+    // 尝试解析并只取年月日
+    try {
+      const date = new Date(timeStr);
+      if (!isNaN(date.getTime())) {
+        return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+      }
+    } catch (e) {}
+    // 兜底：截取到日期部分
+    return timeStr.split(/\s+/)[0] || timeStr;
   }
 
   function escapeHtml(str) {
