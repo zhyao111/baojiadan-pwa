@@ -637,10 +637,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // 如果模型数量超过配置的识别数，让用户选择不使用的模型
       const maxCount = dualCfg.count || 2;
       if (modelsToUse.length > maxCount) {
-        const excluded = await showExcludeModelsDialog(modelsToUse, maxCount);
-        if (excluded !== null) {
-          modelsToUse = modelsToUse.filter((_, i) => !excluded.includes(i));
-        }
+        modelsToUse = modelsToUse.slice(0, maxCount);
       }
 
       if (modelsToUse.length <= 1) {
@@ -2210,19 +2207,43 @@ document.addEventListener('DOMContentLoaded', () => {
     saveDualConfig({ ...getDualConfig(), count: parseInt(selectDualCount.value) });
   });
 
-  btnAddDualModel.addEventListener('click', () => {
+  btnAddDualModel.addEventListener('click', async () => {
     const val = selectDualProvider.value;
     if (!val) { showToast('请选择供应商和模型'); return; }
     const [providerId, model] = val.split('|||');
     const cfg = getDualConfig();
-    const maxCount = cfg.count || 2;
-    if (cfg.models.length >= maxCount) {
-      showToast(`最多添加 ${maxCount} 个模型`);
-      return;
-    }
+
+    // 先添加模型
     cfg.models.push({ providerId, model });
     saveDualConfig(cfg);
     renderDualConfigUI();
+
+    // 如果模型数量超过配置的识别数，立即弹窗让用户选择不使用的模型
+    const maxCount = cfg.count || 2;
+    if (cfg.models.length > maxCount) {
+      const providers = getProviders();
+      const modelsWithInfo = cfg.models.map(item => {
+        const p = providers.find(x => x.id === item.providerId);
+        return p ? { provider: p, model: item.model } : null;
+      }).filter(Boolean);
+
+      const excluded = await showExcludeModelsDialog(modelsWithInfo, maxCount);
+      if (excluded !== null) {
+        // 移除被勾选的模型（从后往前删，避免索引错位）
+        const sortedExcluded = [...excluded].sort((a, b) => b - a);
+        sortedExcluded.forEach(idx => {
+          cfg.models.splice(idx, 1);
+        });
+        saveDualConfig(cfg);
+        renderDualConfigUI();
+        showToast('已更新参与识别的模型');
+      } else {
+        // 取消：移除刚添加的模型
+        cfg.models.pop();
+        saveDualConfig(cfg);
+        renderDualConfigUI();
+      }
+    }
   });
 
   // 初始化 badge
