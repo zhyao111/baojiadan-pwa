@@ -253,10 +253,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function showRateEditDialog(label, idx, targetEl) {
-    // 解析当前快速填写的值
-    const currentRates = parseTripleInput(quickRate.value) || [0, 0, 0];
-    const currentValue = currentRates[idx] || '';
-
     const overlay = document.createElement('div');
     overlay.className = 'confirm-overlay';
     overlay.style.zIndex = '1100';
@@ -267,7 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let html = '<div style="text-align:left;">';
     html += `<div style="font-weight:600;margin-bottom:12px;font-size:15px;">修改${label}</div>`;
-    html += `<input type="number" id="rateEditInput" class="form-input" value="${currentValue}" placeholder="输入费率" step="0.01" min="0" style="width:100%;height:44px;background:var(--input-bg);border:1.5px solid var(--border);border-radius:10px;padding:0 14px;font-size:16px;outline:none;">`;
+    html += `<input type="number" inputmode="decimal" id="rateEditInput" class="form-input" value="" placeholder="输入费率" step="0.01" min="0" style="width:100%;height:44px;background:var(--input-bg);border:1.5px solid var(--border);border-radius:10px;padding:0 14px;font-size:16px;outline:none;">`;
     html += '<div style="display:flex;gap:10px;margin-top:16px;">';
     html += '<button class="confirm-btn confirm-cancel" id="rateEditCancel" style="flex:1;">取消</button>';
     html += '<button class="confirm-btn confirm-ok" id="rateEditOk" style="flex:1;">确定</button>';
@@ -278,7 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
 
-    // 自动聚焦并弹出键盘
+    // 自动聚焦并弹出数字键盘
     const input = overlay.querySelector('#rateEditInput');
     setTimeout(() => input.focus(), 100);
 
