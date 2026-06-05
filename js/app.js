@@ -110,6 +110,42 @@ document.addEventListener('DOMContentLoaded', () => {
   const commercialExpiryMonth = $('#commercialExpiryMonth');
   const commercialExpiryDay = $('#commercialExpiryDay');
 
+  // ====== Company Name Correction ======
+  const COMPANY_CORRECTIONS_KEY = 'chefeibao_company_corrections';
+
+  function getCompanyCorrections() {
+    try { return JSON.parse(localStorage.getItem(COMPANY_CORRECTIONS_KEY) || '{}'); }
+    catch { return {}; }
+  }
+
+  function saveCompanyCorrection(wrongName, correctName) {
+    if (!wrongName || !correctName || wrongName === correctName) return;
+    const corrections = getCompanyCorrections();
+    corrections[wrongName] = correctName;
+    localStorage.setItem(COMPANY_CORRECTIONS_KEY, JSON.stringify(corrections));
+  }
+
+  function correctCompanyName(name) {
+    if (!name) return name;
+    const corrections = getCompanyCorrections();
+    return corrections[name] || name;
+  }
+
+  // 监听保险公司输入框变化，记录用户修正
+  let lastCompanyValue = '';
+  insuranceCompany.addEventListener('blur', () => {
+    const newVal = insuranceCompany.value.trim();
+    if (lastCompanyValue && newVal && lastCompanyValue !== newVal) {
+      saveCompanyCorrection(lastCompanyValue, newVal);
+    }
+    lastCompanyValue = newVal;
+  });
+
+  // 识别时记录原始值
+  function trackCompanyBeforeOCR() {
+    lastCompanyValue = insuranceCompany.value.trim();
+  }
+
   // ====== Recognition Models (Custom Provider System) ======
   const PROVIDERS_KEY = 'chefeibao_providers';
   const ACTIVE_PROVIDER_KEY = 'chefeibao_active_provider';
@@ -980,7 +1016,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function applyOCRResult(data) {
     resultSection.style.display = 'none';
-    insuranceCompany.value = data.company || '';
+    // 应用公司名称修正
+    const correctedCompany = correctCompanyName(data.company);
+    insuranceCompany.value = correctedCompany || '';
+    lastCompanyValue = correctedCompany;
     plateNumber.value = data.plate || '';
     if (data.compulsoryAmount != null) compulsoryAmount.value = data.compulsoryAmount;
     if (data.compulsoryRate != null) compulsoryRate.value = data.compulsoryRate;
