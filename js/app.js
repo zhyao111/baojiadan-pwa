@@ -314,6 +314,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!insuranceCompany.value.trim()) missing.push({ label: '保险公司', el: insuranceCompany });
     if (!plateNumber.value.trim()) missing.push({ label: '车牌号', el: plateNumber });
     if (!quickRate.value.trim()) missing.push({ label: '费率', el: quickRate });
+    if (data.compulsoryAmount === 0) missing.push({ label: '交强险保费', el: compulsoryAmount });
+    if (data.commercialAmount === 0) missing.push({ label: '商业险保费', el: commercialAmount });
+    if (data.nonVehicleAmount === 0) missing.push({ label: '随车非车保费', el: nonVehicleAmount });
+    if (data.vehicleTax === 0) missing.push({ label: '车船税', el: vehicleTax });
 
     // 有未填项：弹窗显示所有未填项
     if (missing.length > 0) {
@@ -333,7 +337,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // 检查是否有保费数据
     const hasAmount = newData.compulsoryAmount > 0 || newData.commercialAmount > 0 || newData.nonVehicleAmount > 0 || newData.vehicleTax > 0;
     if (!hasAmount) {
-      showToast('保费未填写');
       return;
     }
 
