@@ -849,6 +849,88 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // ---- 选择模型弹窗 ----
+  function showSelectModelsDialog(availableModels, needCount) {
+    return new Promise((resolve) => {
+
+      const overlay = document.createElement('div');
+      overlay.className = 'confirm-overlay';
+      overlay.style.zIndex = '1100';
+
+      const dialog = document.createElement('div');
+      dialog.className = 'confirm-dialog';
+      dialog.style.maxWidth = '340px';
+      dialog.style.maxHeight = '80vh';
+      dialog.style.overflow = 'auto';
+
+      let html = '<div class="confirm-dialog-content">';
+      html += `<div class="confirm-dialog-title" style="color:#4CAF50;">➕ 请添加 ${needCount} 个模型</div>`;
+      html += `<div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">当前模型不足，请选择要参与识别的模型：</div>`;
+
+      availableModels.forEach((item, i) => {
+        html += `<div class="select-model-item" data-idx="${i}" style="display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:6px;background:var(--card-bg);border:1.5px solid var(--border);border-radius:10px;cursor:pointer;transition:all 0.15s;">`;
+        html += `<span class="select-checkbox" style="width:20px;height:20px;border-radius:6px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s;"></span>`;
+        html += `<div style="flex:1;"><div style="font-weight:500;font-size:14px;">${item.provider.name || item.provider.id}</div><div style="font-size:12px;color:var(--text-secondary);">${item.model}</div></div>`;
+        html += '</div>';
+      });
+
+      html += '<div style="display:flex;gap:10px;margin-top:16px;">';
+      html += '<button class="confirm-btn confirm-cancel" id="selectModelCancel" style="flex:1;">取消</button>';
+      html += '<button class="confirm-btn confirm-ok" id="selectModelConfirm" style="flex:1;">确定</button>';
+      html += '</div>';
+      html += '</div>';
+
+      dialog.innerHTML = html;
+      overlay.appendChild(dialog);
+      document.body.appendChild(overlay);
+
+      // 记录选择
+      const selectedIndices = new Set();
+
+      // 点击选择/取消
+      overlay.querySelectorAll('.select-model-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const idx = parseInt(item.dataset.idx, 10);
+          if (selectedIndices.has(idx)) {
+            selectedIndices.delete(idx);
+            item.style.borderColor = 'var(--border)';
+            item.style.background = 'var(--card-bg)';
+            item.querySelector('.select-checkbox').style.background = 'transparent';
+            item.querySelector('.select-checkbox').innerHTML = '';
+          } else {
+            if (selectedIndices.size >= needCount) {
+              showToast(`最多选择 ${needCount} 个模型`);
+              return;
+            }
+            selectedIndices.add(idx);
+            item.style.borderColor = '#4CAF50';
+            item.style.background = '#F0FAF7';
+            item.querySelector('.select-checkbox').style.background = '#4CAF50';
+            item.querySelector('.select-checkbox').innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L20 7" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+          }
+        });
+      });
+
+      // 确定
+      overlay.querySelector('#selectModelConfirm').addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (selectedIndices.size !== needCount) {
+          showToast(`请选择 ${needCount} 个模型`);
+          return;
+        }
+        document.body.removeChild(overlay);
+        resolve([...selectedIndices].map(i => availableModels[i]));
+      });
+
+      // 取消
+      overlay.querySelector('#selectModelCancel').addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.body.removeChild(overlay);
+        resolve(null);
+      });
+    });
+  }
+
   // ---- 冲突选择弹窗 ----
   const FIELD_LABELS = {
     company: '保险公司',
@@ -2220,6 +2302,7 @@ document.addEventListener('DOMContentLoaded', () => {
   selectDualCount.addEventListener('change', async () => {
     const cfg = getDualConfig();
     const newCount = parseInt(selectDualCount.value);
+    const oldCount = cfg.count;
     cfg.count = newCount;
 
     // 如果模型数量超过新的识别数，弹窗让用户选择不使用的模型
@@ -2241,7 +2324,50 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast('已更新参与识别的模型');
       } else {
         // 取消：恢复原来的值
-        selectDualCount.value = cfg.count;
+        cfg.count = oldCount;
+        selectDualCount.value = oldCount;
+        saveDualConfig(cfg);
+        return;
+      }
+    }
+    // 如果模型数量小于新的识别数，弹窗让用户选择要添加的模型
+    else if (cfg.models.length < newCount) {
+      const providers = getProviders();
+      const addedModels = new Set(cfg.models.map(m => `${m.providerId}|||${m.model}`));
+
+      // 收集所有可用模型
+      const availableModels = [];
+      providers.forEach((p) => {
+        (p.models || []).forEach((model) => {
+          const key = `${p.id}|||${model}`;
+          if (!addedModels.has(key)) {
+            availableModels.push({ provider: p, model });
+          }
+        });
+      });
+
+      if (availableModels.length === 0) {
+        showToast('没有更多可用的模型');
+        cfg.count = oldCount;
+        selectDualCount.value = oldCount;
+        saveDualConfig(cfg);
+        return;
+      }
+
+      const needCount = newCount - cfg.models.length;
+      const selected = await showSelectModelsDialog(availableModels, needCount);
+      if (selected !== null) {
+        selected.forEach(item => {
+          cfg.models.push({ providerId: item.provider.id, model: item.model });
+        });
+        saveDualConfig(cfg);
+        renderDualConfigUI();
+        showToast('已添加参与识别的模型');
+      } else {
+        // 取消：恢复原来的值
+        cfg.count = oldCount;
+        selectDualCount.value = oldCount;
+        saveDualConfig(cfg);
         return;
       }
     } else {
