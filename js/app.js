@@ -2899,7 +2899,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function applyFontSize(size) {
-    document.documentElement.style.fontSize = `${size * 16 / 100}px`;
+    // 使用 CSS 变量控制字体大小倍率
+    document.documentElement.style.setProperty('--font-scale', size / 100);
     fontSizeValue.textContent = `${size}%`;
   }
 

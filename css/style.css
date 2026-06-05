@@ -23,10 +23,11 @@
   --nav-height: clamp(52px, 10vw, 64px);
   --header-height: clamp(48px, 9vw, 60px);
   --font-base: clamp(14px, 2.8vw, 18px);
+  --font-scale: 1;
 }
 
 html {
-  font-size: var(--font-base);
+  font-size: calc(var(--font-base) * var(--font-scale));
   -webkit-text-size-adjust: 100%;
 }
 
