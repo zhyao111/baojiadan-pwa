@@ -13,34 +13,42 @@
       function detectSafeArea() {
         var top = 0, bottom = 0;
 
-        // 方法1: visualViewport API
+        // 方法1: visualViewport API — iOS Safari 最可靠
         if (window.visualViewport) {
-          top = window.visualViewport.offsetTop || 0;
+          var offset = window.visualViewport.offsetTop || 0;
           var vh = window.visualViewport.height || window.innerHeight;
-          bottom = window.innerHeight - vh - top;
+          var diff = window.innerHeight - vh;
+          // offsetTop > 0 表示有状态栏在内容上方
+          if (offset > 0) top = offset;
+          // diff > offset 表示底部也有非内容区域（工具栏或导航栏）
+          if (diff > offset) bottom = diff - offset;
         }
 
         // 方法2: screen 对比兜底
         if (top <= 0 && bottom <= 0) {
-          var diff = window.screen.height - window.innerHeight;
-          if (diff > 40) {
-            top = diff > 60 ? 30 : 25;
-            bottom = diff - top;
+          var screenDiff = window.screen.height - window.innerHeight;
+          if (screenDiff > 40) {
+            top = screenDiff > 60 ? 30 : 25;
+            bottom = screenDiff - top;
           }
         }
 
-        // 方法3: 状态栏兜底
+        // 方法3: iOS 状态栏兜底（在前两种都检测不到时）
         if (top <= 0) {
           top = Math.max(Math.round(window.innerWidth * 0.045), 30);
         }
 
-        // iOS Safari 底部工具栏适配（非 standalone 模式）
-        if (isIOS && !isStandalone) {
-          if (bottom <= 0) {
-            // Safari 底部工具栏 ≈ 49px（iPhone）或 ≈ 50px（iPad）
-            bottom = Math.round(window.innerWidth * 0.045) + 28;
-          }
+        // iOS Safari 底部工具栏 (非 standalone / 非全屏)
+        if (isIOS && !isStandalone && bottom <= 0) {
+          // 如果 visualViewport 检测不到底部（常见于 iOS 15+），固定 49px
+          bottom = 49;
         }
+
+        top = Math.max(top, 0);
+        bottom = Math.max(bottom, 0);
+
+        document.documentElement.style.setProperty('--sat', top + 'px');
+        document.documentElement.style.setProperty('--sab', bottom + 'px');
 
         top = Math.max(top, 0);
         bottom = Math.max(bottom, 0);
