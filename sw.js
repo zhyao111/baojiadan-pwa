@@ -1,4 +1,4 @@
-const CACHE_NAME = 'chefeibao-v5';
+const CACHE_NAME = 'chefeibao-v6';
 const ASSETS = [
   './',
   './index.html',

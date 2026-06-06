@@ -17,23 +17,20 @@
           bottom = window.innerHeight - vh - top;
         }
 
-        // 方法2: screen 对比兜底
+        // 方法2: screen 对比兜底（仅当有实际导航栏时有效）
         if (top <= 0 && bottom <= 0) {
           var diff = window.screen.height - window.innerHeight;
           if (diff > 40) {
-            top = 25;
-            bottom = diff - 25;
+            top = diff > 60 ? 30 : 25;
+            bottom = diff - top;
           }
         }
 
-        // 方法3: 沉浸式模式 Android 兜底 — 状态栏高度 ≈ 6% of innerWidth
+        // 方法3: 状态栏强制兜底（沉浸式模式 visualViewport 无法检测）
         if (top <= 0) {
-          top = Math.max(Math.round(window.innerWidth * 0.04), 28);
+          top = Math.max(Math.round(window.innerWidth * 0.045), 30);
         }
-        if (bottom <= 0) {
-          // 导航栏 ≈ 5% of innerWidth
-          bottom = Math.max(Math.round(window.innerWidth * 0.03), 0);
-        }
+        // 底部由 Java 原生层通过 evaluateJavascript 动态设置
 
         top = Math.max(top, 0);
         bottom = Math.max(bottom, 0);
@@ -41,26 +38,21 @@
         document.documentElement.style.setProperty('--sat', top + 'px');
         document.documentElement.style.setProperty('--sab', bottom + 'px');
 
-        // 底部导航栏安全区域（旧版WebView兼容）
+        // 底部导航栏安全区域
         var nav = document.querySelector('.bottom-nav');
         if (nav) {
-          if (bottom > 0) {
-            nav.classList.add('safe-bottom');
-          } else {
-            nav.classList.remove('safe-bottom');
-          }
+          nav.classList.add('safe-bottom');
+          nav.style.height = (60 + bottom) + 'px';
+          nav.style.paddingBottom = bottom + 'px';
         }
         var app = document.querySelector('.app');
         if (app) {
-          if (bottom > 0) {
-            app.classList.add('safe-bottom');
-          } else {
-            app.classList.remove('safe-bottom');
-          }
+          app.classList.add('safe-bottom');
+          app.style.bottom = (60 + bottom) + 'px';
         }
       }
 
-      // 修复旧版 WebView 不支援 100dvh（如 OPPO ColorOS 12.1）
+      // 修复旧版 WebView
       function fixAppSize() {
         var h = window.innerHeight;
         var app = document.querySelector('.app');
