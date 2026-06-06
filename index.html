@@ -7,6 +7,9 @@
   <link rel="stylesheet" href="css/style.css">
   <script>
     (function() {
+      var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+      var isStandalone = window.navigator.standalone || false;
+
       function detectSafeArea() {
         var top = 0, bottom = 0;
 
@@ -17,7 +20,7 @@
           bottom = window.innerHeight - vh - top;
         }
 
-        // 方法2: screen 对比兜底（仅当有实际导航栏时有效）
+        // 方法2: screen 对比兜底
         if (top <= 0 && bottom <= 0) {
           var diff = window.screen.height - window.innerHeight;
           if (diff > 40) {
@@ -26,11 +29,18 @@
           }
         }
 
-        // 方法3: 状态栏强制兜底（沉浸式模式 visualViewport 无法检测）
+        // 方法3: 状态栏兜底
         if (top <= 0) {
           top = Math.max(Math.round(window.innerWidth * 0.045), 30);
         }
-        // 底部由 Java 原生层通过 evaluateJavascript 动态设置
+
+        // iOS Safari 底部工具栏适配（非 standalone 模式）
+        if (isIOS && !isStandalone) {
+          if (bottom <= 0) {
+            // Safari 底部工具栏 ≈ 49px（iPhone）或 ≈ 50px（iPad）
+            bottom = Math.round(window.innerWidth * 0.045) + 28;
+          }
+        }
 
         top = Math.max(top, 0);
         bottom = Math.max(bottom, 0);
@@ -41,18 +51,15 @@
         // 底部导航栏安全区域
         var nav = document.querySelector('.bottom-nav');
         if (nav) {
-          nav.classList.add('safe-bottom');
           nav.style.height = (60 + bottom) + 'px';
           nav.style.paddingBottom = bottom + 'px';
         }
         var app = document.querySelector('.app');
         if (app) {
-          app.classList.add('safe-bottom');
           app.style.bottom = (60 + bottom) + 'px';
         }
       }
 
-      // 修复旧版 WebView
       function fixAppSize() {
         var h = window.innerHeight;
         var app = document.querySelector('.app');
