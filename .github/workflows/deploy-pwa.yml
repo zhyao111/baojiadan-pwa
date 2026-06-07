@@ -1,0 +1,20 @@
+name: Deploy PWA
+
+on:
+  push:
+    branches: [pwa]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to PWA deploy repo
+        run: |
+          git remote add deploy https://x-access-token:${{ secrets.PWA_DEPLOY_KEY }}@github.com/zhyao111/baojiadan-pwa.git
+          git push deploy pwa:main --force
