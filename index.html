@@ -57,10 +57,8 @@
           nav.style.height = (60 + bottom) + 'px';
           nav.style.paddingBottom = bottom + 'px';
         }
-        var app = document.querySelector('.app');
-        if (app) {
-          app.style.bottom = (60 + bottom) + 'px';
-        }
+        // 注意：不要设置 app.style.bottom，CSS 默认 bottom:0
+        // 不要设置 app.style.height，fixAppSize 已经设了
       }
 
       function fixAppSize() {
