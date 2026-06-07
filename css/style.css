@@ -110,9 +110,9 @@ body {
   min-height: 0;
   will-change: scroll-position;
 }
-/* Fixed bottom nav space */
+/* Fixed bottom nav space — app 自身已有 bottom: 60px 间隙 */
 .scroll-area {
-  padding-bottom: calc(60px + var(--sab, 0px) + 12px);
+  padding-bottom: 4px;
 }
 
 /* ========== Cards ========== */
