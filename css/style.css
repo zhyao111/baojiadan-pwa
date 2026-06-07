@@ -59,7 +59,6 @@ body {
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
 /* Top/bottom safe-area handled by JS inline styles */
@@ -95,24 +94,21 @@ body {
 }
 
 .tab-content.active {
-  display: block;
+  display: flex;
+  flex-direction: column;
   min-height: 0;
 }
 
-/* 滚动容器用绝对定位占满 tab-content，彻底避免 flex 拉伸 */
+/* 滚动容器占满 tab-content */
 .scroll-area {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
+  flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 0 16px calc(60px + 16px);
+  padding: 0 16px 0;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
+  min-height: 0;
   will-change: scroll-position;
-}
-
-.scroll-area:last-child {
-  padding-bottom: 76px;
 }
 
 /* ========== Cards ========== */
@@ -1998,40 +1994,21 @@ input[type="number"] {
 
 /* ========== Bottom Navigation ========== */
 .bottom-nav {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 999;
-  display: -webkit-flex;
   display: flex;
-  -webkit-align-items: center;
   align-items: center;
-  -webkit-justify-content: space-around;
   justify-content: space-around;
   height: 60px;
+  flex-shrink: 0;
   background: var(--card-bg);
   border-top: 1px solid #F0E8E4;
+  max-width: 480px;
+  margin: 0 auto;
+  width: 100%;
 }
+
 .bottom-nav.safe-bottom {
   height: calc(60px + var(--sab, 0px));
   padding-bottom: var(--sab, 0px);
-}
-
-/* Max-width centering */
-.bottom-nav-wrap {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 999;
-  pointer-events: none;
-}
-.bottom-nav-wrap .bottom-nav {
-  position: relative;
-  max-width: 480px;
-  margin: 0 auto;
-  pointer-events: auto;
 }
 
 .nav-item {
