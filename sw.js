@@ -83,22 +83,21 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // 静态资源（CSS/JS/图片等）：缓存优先，网络兜底
+  // 静态资源（CSS/JS/图片等）：网络优先，缓存兜底 — 确保每次刷新都拿最新版
   e.respondWith(
-    caches.match(e.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(e.request)
-        .then((resp) => {
-          if (resp.ok) {
-            const clone = resp.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
-          }
-          return resp;
-        })
-        .catch(() => {
-          // 资源也可能离线，返回一个空响应避免 JS 报错
+    fetch(e.request)
+      .then((resp) => {
+        if (resp.ok) {
+          const clone = resp.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
+        }
+        return resp;
+      })
+      .catch(() => {
+        return caches.match(e.request).then((cached) => {
+          if (cached) return cached;
           return new Response('', { status: 408 });
         });
-    })
+      })
   );
 });
