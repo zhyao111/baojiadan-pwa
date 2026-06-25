@@ -1,16 +1,17 @@
-const CACHE_NAME = 'chefeibao-v9';
+const CACHE_NAME = 'chefeibao-v11';
 
 // 核心资源 — install 失败也能降级，不影响 SW 激活
 const CORE_ASSETS = [
   './',
   './index.html',
   './css/style.css',
+  './css/photoswipe.min.css',
   './js/utils.js',
-  './js/storage.js',
   './js/calculator.js',
-  './js/providers.js',
-  './js/ocr.js',
+  './js/dialogs.js',
   './js/app.js',
+  './js/photoswipe.min.js',
+  './js/photoswipe-lightbox.min.js',
   './manifest.json',
   './icons/icon-192.svg',
   './icons/icon-512.svg',

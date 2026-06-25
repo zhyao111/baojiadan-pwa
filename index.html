@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>报价单</title>
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/photoswipe.min.css">
+  <link rel="manifest" href="manifest.json">
   <script>
     (function() {
       var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -44,6 +46,48 @@
       window.addEventListener('orientationchange', function() {
         setTimeout(detectSafeArea, 300);
       });
+
+      // 键盘处理（Capacitor Keyboard 插件 + focus/blur 降级）
+      var Keyboard = window.Capacitor?.Plugins?.Keyboard;
+      var navEl = document.querySelector('.bottom-nav');
+      var appEl = document.querySelector('.app');
+
+      if (Keyboard) {
+        Keyboard.addListener('keyboardWillShow', function(info) {
+          var kbHeight = info.keyboardHeight || 0;
+          if (navEl) navEl.style.display = 'none';
+          if (appEl) appEl.style.height = (window.innerHeight - kbHeight) + 'px';
+          setTimeout(function() {
+            var a = document.activeElement;
+            if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) {
+              a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }, 100);
+        });
+
+        Keyboard.addListener('keyboardWillHide', function() {
+          if (navEl) navEl.style.display = '';
+          if (appEl) appEl.style.height = '';
+        });
+
+        Keyboard.setResizeMode({ mode: 'none' }).catch(function() {});
+      } else {
+        var blurTimer = null;
+        document.addEventListener('focusin', function(e) {
+          if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+            clearTimeout(blurTimer);
+            if (navEl) navEl.style.display = 'none';
+          }
+        });
+        document.addEventListener('focusout', function(e) {
+          if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+            clearTimeout(blurTimer);
+            blurTimer = setTimeout(function() { if (navEl) navEl.style.display = ''; }, 300);
+          }
+        });
+      }
+
+      window.addEventListener('orientationchange', function() { setTimeout(detectSafeArea, 300); });
     })();
   </script>
 </head>
@@ -80,7 +124,6 @@
               选图
             </button>
           </div>
-          <!-- 图片预览区 -->
           <div class="img-preview-wrap" id="imgPreviewWrap" style="display:none;">
             <img class="img-preview" id="imgPreview" alt="报价单预览">
             <button class="img-preview-remove" id="btnRemoveImg" type="button">&times;</button>
@@ -291,8 +334,6 @@
             <span class="highlight-label" id="labelAfterTax">税后手续费</span>
             <span class="highlight-value" id="resultAfterTax">&yen; 0.00</span>
           </div>
-
-          <!-- 复制和分享按钮 -->
           <div class="copy-buttons">
             <button class="btn-copy" id="btnCopyPlan">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;margin-right:4px;">
@@ -311,8 +352,6 @@
               分享
             </button>
           </div>
-
-          <!-- 保存到记录 -->
           <button class="btn btn-save" id="btnSaveRecord">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="vertical-align:-3px;margin-right:6px;">
               <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" stroke="currentColor" stroke-width="1.8"/>
@@ -323,75 +362,47 @@
           </button>
         </section>
 
-      </div><!-- /scroll-area -->
+      </div>
     </main>
 
     <!-- ====== 设置 Tab ====== -->
     <main class="tab-content" id="tabSettings">
       <div class="scroll-area">
-
-        <!-- 设置菜单 -->
         <div id="settingsMenu">
           <div class="settings-menu-group">
             <div class="settings-menu-item" id="btnGoRecords">
-              <span class="settings-menu-icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/>
-                  <polyline points="12,6 12,12 16,14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </span>
+              <span class="settings-menu-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><polyline points="12,6 12,12 16,14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
               <span class="settings-menu-label">历史记录</span>
               <span class="settings-menu-arrow">&rsaquo;</span>
             </div>
             <div class="settings-menu-item" id="btnGoModels">
-              <span class="settings-menu-icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                  <circle cx="7" cy="7" r="2" stroke="currentColor" stroke-width="1.8"/>
-                  <path d="M2 18l4-6 3 4 2-2 5 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </span>
+              <span class="settings-menu-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="7" cy="7" r="2" stroke="currentColor" stroke-width="1.8"/><path d="M2 18l4-6 3 4 2-2 5 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
               <span class="settings-menu-label">识别模型配置</span>
               <span class="settings-menu-badge" id="activeProviderBadge" style="display:none;"></span>
               <span class="settings-menu-arrow">&rsaquo;</span>
             </div>
             <div class="settings-menu-item" id="btnGoDualConfig">
-              <span class="settings-menu-icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                  <path d="M8 3v4M16 3v4M3 8h4M17 8h4M8 17v4M16 17v4M3 16h4M17 16h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-                  <rect x="8" y="8" width="8" height="8" rx="1" stroke="currentColor" stroke-width="1.6"/>
-                </svg>
-              </span>
+              <span class="settings-menu-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M8 3v4M16 3v4M3 8h4M17 8h4M8 17v4M16 17v4M3 16h4M17 16h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect x="8" y="8" width="8" height="8" rx="1" stroke="currentColor" stroke-width="1.6"/></svg></span>
               <span class="settings-menu-label">多重识别配置</span>
               <span class="settings-menu-badge" id="dualConfigBadge">1 个模型</span>
               <span class="settings-menu-arrow">&rsaquo;</span>
             </div>
           </div>
 
-          <!-- 版本信息 -->
+          <!-- 版本信息（PWA 独有） -->
           <div class="settings-font-size" style="justify-content:center;padding:8px 0;border:none;">
             <span style="font-size:11px;color:#bbb;" id="versionDisplay">加载中...</span>
           </div>
-
           <script>
-            var verEl = document.getElementById('versionDisplay');
-            if (verEl) verEl.textContent = '版本: 2026-06-08a | 冲突弹窗已修复';
+            (function() {
+              var el = document.getElementById('versionDisplay');
+              if (el) { el.textContent = '版本: v11 | 2026-06-25'; }
+            })();
           </script>
 
-          <script>
-            // 显示版本号，方便区分新旧版本
-            var verEl = document.getElementById('versionDisplay');
-            if (verEl) {
-              var v = localStorage.getItem('pwa_version') || '0';
-              verEl.textContent = '版本: v' + v + ' | 2026-06-08';
-            }
-          </script>
-
-          <!-- 字体大小设置 -->
           <div class="settings-font-size">
             <div class="settings-font-label">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M4 7V4h16v3M9 20h6M12 4v16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 7V4h16v3M9 20h6M12 4v16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
               <span>字体大小</span>
             </div>
             <div class="settings-font-slider">
@@ -402,260 +413,55 @@
             <div class="settings-font-value" id="fontSizeValue">100%</div>
           </div>
         </div>
-
-        <!-- 双重识别配置子页面 -->
         <div class="settings-subpage" id="subpageDualConfig" style="display:none;">
           <div class="subpage-header">
             <button class="subpage-back" id="btnBackFromDualConfig">&larr; 返回</button>
             <span class="subpage-title">多重识别配置</span>
           </div>
-
-          <div style="margin-bottom:16px;">
-            <button class="btn-test-dual-bottom" id="btnTestAllDualModels" type="button">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="margin-right:6px;flex-shrink:0;">
-                <path d="M22 11.08V12a10 10 0 11-5.93-9.14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <polyline points="22,4 12,14.01 9,11.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              测试所有使用中的模型
-            </button>
-          </div>
-
-          <div class="failover-controls">
-            <div class="failover-switch-row">
-              <label class="toggle-switch">
-                <input type="checkbox" id="chkDualRecognize" checked>
-                <span class="toggle-track"></span>
-                <span class="toggle-label">启用多重识别</span>
-              </label>
-            </div>
-
-            <div class="failover-options">
-              <div class="failover-option">
-                <label class="failover-option-label">识别模型数</label>
-                <select id="selectDualCount" class="failover-mini-select">
-                  <option value="2" selected>2 个</option>
-                  <option value="3">3 个</option>
-                  <option value="4">4 个</option>
-                  <option value="5">5 个</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <!-- 已配置的模型列表 -->
+          <div style="margin-bottom:16px;"><button class="btn-test-dual-bottom" id="btnTestAllDualModels" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="margin-right:6px;flex-shrink:0;"><path d="M22 11.08V12a10 10 0 11-5.93-9.14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="22,4 12,14.01 9,11.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>测试所有使用中的模型</button></div>
+          <div class="failover-controls"><div class="failover-switch-row"><label class="toggle-switch"><input type="checkbox" id="chkDualRecognize" checked><span class="toggle-track"></span><span class="toggle-label">启用多重识别</span></label></div><div class="failover-options"><div class="failover-option"><label class="failover-option-label">识别模型数</label><select id="selectDualCount" class="failover-mini-select"><option value="2" selected>2 个</option><option value="3">3 个</option><option value="4">4 个</option><option value="5">5 个</option></select></div></div></div>
           <div class="failover-section-title">参与识别的模型</div>
           <div id="dualModelList" class="failover-queue-list"></div>
-
-          <div class="failover-hint">
-            <div class="failover-hint-icon">💡</div>
-            <div class="failover-hint-text">
-              同时使用多个模型识别同一张图片，逐字段对比取最优结果。<br>模型越多准确率越高，但耗时等于最慢的那个。
-            </div>
-          </div>
-
-          <!-- 添加模型 -->
-          <div class="failover-add-row">
-            <select class="form-select" id="selectDualProvider" style="flex:1;">
-              <option value="">选择模型...</option>
-            </select>
-            <button class="btn-add-model" id="btnAddDualModel" type="button">+ 添加</button>
-          </div>
+          <div class="failover-hint"><div class="failover-hint-icon">💡</div><div class="failover-hint-text">同时使用多个模型识别同一张图片，逐字段对比取最优结果。<br>模型越多准确率越高，但耗时等于最慢的那个。</div></div>
+          <div class="failover-add-row"><select class="form-select" id="selectDualProvider" style="flex:1;"><option value="">选择模型...</option></select><button class="btn-add-model" id="btnAddDualModel" type="button">+ 添加</button></div>
         </div>
-
-        <!-- 历史记录子页面 -->
         <div class="settings-subpage" id="subpageRecords" style="display:none;">
-          <div class="subpage-header">
-            <button class="subpage-back" id="btnBackFromRecords">&larr; 返回</button>
-            <span class="subpage-title">历史记录</span>
-            <button class="subpage-action" id="btnClearAllRecords" style="display:none;">清空</button>
-          </div>
-          <div class="record-search-wrap" id="recordSearchWrap" style="display:none;">
-            <input type="text" class="input-field" id="recordSearchInput" placeholder="搜索车牌号..." style="height:40px;font-size:13px;">
-          </div>
-          <div class="empty-state-settings" id="emptyStateSettings">
-            <div class="empty-icon-settings">
-              <svg width="64" height="64" viewBox="0 0 120 120" fill="none">
-                <rect x="20" y="30" width="80" height="65" rx="8" stroke="currentColor" stroke-width="2.5" opacity="0.2"/>
-                <path d="M40 65h40M40 78h25" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" opacity="0.3"/>
-                <circle cx="85" cy="35" r="18" fill="var(--primary)" opacity="0.15"/>
-                <path d="M81 35l3 3 5-5" stroke="var(--primary)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
-                <path d="M25 25l-5-5M95 25l5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.2"/>
-              </svg>
-            </div>
-            <p class="empty-title">暂无历史记录</p>
-            <p class="empty-subtitle">计算完成后点击"保存到记录"</p>
-            <div class="empty-steps">
-              <div class="empty-step">
-                <span class="empty-step-num">1</span>
-                <span>上传报价单识别</span>
-              </div>
-              <div class="empty-step">
-                <span class="empty-step-num">2</span>
-                <span>核对数据并计算</span>
-              </div>
-              <div class="empty-step">
-                <span class="empty-step-num">3</span>
-                <span>保存到历史记录</span>
-              </div>
-            </div>
-          </div>
+          <div class="subpage-header"><button class="subpage-back" id="btnBackFromRecords">&larr; 返回</button><span class="subpage-title">历史记录</span><button class="subpage-action" id="btnClearAllRecords" style="display:none;">清空</button></div>
+          <div class="record-search-wrap" id="recordSearchWrap" style="display:none;"><input type="text" class="input-field" id="recordSearchInput" placeholder="搜索车牌号..." style="height:40px;font-size:13px;"></div>
+          <div class="empty-state-settings" id="emptyStateSettings"><div class="empty-icon-settings"><svg width="64" height="64" viewBox="0 0 120 120" fill="none"><rect x="20" y="30" width="80" height="65" rx="8" stroke="currentColor" stroke-width="2.5" opacity="0.2"/><path d="M40 65h40M40 78h25" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" opacity="0.3"/><circle cx="85" cy="35" r="18" fill="var(--primary)" opacity="0.15"/><path d="M81 35l3 3 5-5" stroke="var(--primary)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/><path d="M25 25l-5-5M95 25l5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.2"/></svg></div><p class="empty-title">暂无历史记录</p><p class="empty-subtitle">计算完成后点击"保存到记录"</p><div class="empty-steps"><div class="empty-step"><span class="empty-step-num">1</span><span>上传报价单识别</span></div><div class="empty-step"><span class="empty-step-num">2</span><span>核对数据并计算</span></div><div class="empty-step"><span class="empty-step-num">3</span><span>保存到历史记录</span></div></div></div>
           <div class="record-list-settings" id="recordListSettings"></div>
         </div>
-
-        <!-- 识别模型配置子页面 -->
         <div class="settings-subpage" id="subpageModels" style="display:none;">
-          <div class="subpage-header">
-            <button class="subpage-back" id="btnBackFromModels">&larr; 返回</button>
-            <span class="subpage-title">识别模型配置</span>
-            <button class="subpage-action" id="btnAddProvider">+ 添加</button>
-          </div>
-          <div class="empty-state-settings" id="emptyStateProviders" style="display:none;">
-            <div class="empty-icon-settings">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
-                <rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" stroke-width="1.8"/>
-                <line x1="12" y1="8" x2="12" y2="16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                <line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-              </svg>
-            </div>
-            <p class="empty-title">暂无识别模型</p>
-            <p class="empty-subtitle">点击上方"+ 添加"配置你的 API 提供商</p>
-          </div>
+          <div class="subpage-header"><button class="subpage-back" id="btnBackFromModels">&larr; 返回</button><span class="subpage-title">识别模型配置</span><button class="subpage-action" id="btnAddProvider">+ 添加</button></div>
+          <div class="empty-state-settings" id="emptyStateProviders" style="display:none;"><div class="empty-icon-settings"><svg width="48" height="48" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" stroke-width="1.8"/><line x1="12" y1="8" x2="12" y2="16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div><p class="empty-title">暂无识别模型</p><p class="empty-subtitle">点击上方"+ 添加"配置你的 API 提供商</p></div>
           <div class="provider-list" id="providerList"></div>
         </div>
-
       </div>
     </main>
 
-    <!-- ====== 底部导航栏（在 app 内部，flex 布局自动定位） ====== -->
-    <nav class="bottom-nav" id="bottomNav">
+    <!-- ====== 底部导航栏 ====== -->
+    <nav class="bottom-nav">
       <button class="nav-item active" data-tab="tabCalc">
-          <span class="nav-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" stroke-width="1.8"/>
-              <line x1="3" y1="9" x2="21" y2="9" stroke="currentColor" stroke-width="1.5"/>
-              <line x1="9" y1="9" x2="9" y2="21" stroke="currentColor" stroke-width="1.5"/>
-              <line x1="15" y1="9" x2="15" y2="21" stroke="currentColor" stroke-width="1.5"/>
-              <line x1="3" y1="15" x2="21" y2="15" stroke="currentColor" stroke-width="1.5"/>
-            </svg>
-          </span>
-          <span class="nav-label">计算</span>
-        </button>
-        <button class="nav-item" data-tab="tabSettings">
-          <span class="nav-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" stroke="currentColor" stroke-width="1.6"/>
-              <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/>
-            </svg>
-          </span>
-          <span class="nav-label">设置</span>
-        </button>
-      </nav>
+        <span class="nav-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" stroke-width="1.8"/><line x1="3" y1="9" x2="21" y2="9" stroke="currentColor" stroke-width="1.5"/><line x1="9" y1="9" x2="9" y2="21" stroke="currentColor" stroke-width="1.5"/><line x1="15" y1="9" x2="15" y2="21" stroke="currentColor" stroke-width="1.5"/><line x1="3" y1="15" x2="21" y2="15" stroke="currentColor" stroke-width="1.5"/></svg></span>
+        <span class="nav-label">计算</span>
+      </button>
+      <button class="nav-item" data-tab="tabSettings">
+        <span class="nav-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/></svg></span>
+        <span class="nav-label">设置</span>
+      </button>
+    </nav>
 
     <!-- ====== 确认弹窗 ====== -->
-    <div class="confirm-overlay" id="confirmOverlay" style="display:none;">
-      <div class="confirm-dialog">
-        <p class="confirm-message" id="confirmMessage">确定要清空全部记录吗？</p>
-        <div class="confirm-view-img" id="confirmViewImg" style="display:none;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;margin-right:4px;">
-            <rect x="2" y="4" width="20" height="16" rx="3" stroke="currentColor" stroke-width="1.6"/>
-            <circle cx="8.5" cy="9.5" r="2" stroke="currentColor" stroke-width="1.4"/>
-            <path d="M2 16l5-5 4 4 3-3 6 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          查看图片
-        </div>
-        <div class="confirm-actions">
-          <button class="confirm-btn confirm-cancel" id="confirmCancel">取消</button>
-          <button class="confirm-btn confirm-ok" id="confirmOk">确定</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ====== 添加/编辑提供商弹窗 ====== -->
-    <div class="modal-overlay" id="providerModal" style="display:none;">
-      <div class="modal-sheet">
-        <div class="modal-header">
-          <h2 class="modal-title" id="providerModalTitle">添加模型提供商</h2>
-          <button class="modal-close" id="btnCloseProviderModal">&times;</button>
-        </div>
-        <div class="modal-body">
-
-          <!-- 快速选择 -->
-          <div class="form-group">
-            <label class="form-label">快速选择</label>
-            <select class="form-select" id="quickSelectProvider">
-              <option value="">-- 手动配置 --</option>
-              <option value="xiaomi">小米</option>
-              <option value="qwen">千问</option>
-            </select>
-          </div>
-
-          <!-- 提供商 ID -->
-          <div class="form-group">
-            <label class="form-label">提供商 ID</label>
-            <input type="text" class="form-input" id="inputProviderId" placeholder="唯一标识，如 deepseek">
-          </div>
-
-          <!-- Base URL -->
-          <div class="form-group">
-            <label class="form-label">Base URL</label>
-            <input type="url" class="form-input" id="inputBaseUrl" placeholder="https://api.example.com/v1">
-          </div>
-
-          <!-- API 协议 -->
-          <div class="form-group">
-            <label class="form-label">API 协议</label>
-            <select class="form-select" id="inputProtocol">
-              <option value="openai">OpenAI Completions</option>
-              <option value="ocr">OCR 专用接口</option>
-              <option value="custom">自定义接口</option>
-            </select>
-          </div>
-
-          <!-- API Key -->
-          <div class="form-group">
-            <label class="form-label">API Key</label>
-            <div class="form-input-wrap">
-              <input type="password" class="form-input" id="inputApiKey" placeholder="sk-...">
-              <button class="form-input-eye" id="btnToggleApiKey" type="button">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                  <circle cx="12" cy="12" r="3"/>
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <!-- 模型列表 -->
-          <div class="form-group">
-            <label class="form-label">模型列表 (<span id="modelCount">0</span> 个) <span class="auto-fetch-btn" id="btnAutoFetch">自动获取</span></label>
-            <div class="model-select-list" id="modalModelList">
-              <p class="model-tag-empty" id="modalModelEmpty">暂无模型</p>
-            </div>
-            <div class="model-add-row">
-              <input type="text" class="form-input" id="inputModelName" placeholder="模型名称，如 gpt-4o">
-              <button class="btn-add-model" id="btnAddModel" type="button">+ 添加</button>
-            </div>
-          </div>
-
-        </div>
-        <div class="modal-footer">
-          <button class="modal-btn modal-btn-cancel" id="btnCancelProvider">取消</button>
-          <button class="modal-btn modal-btn-save" id="btnSaveProvider">保存</button>
-        </div>
-      </div>
-    </div>
-    <!-- ====== 图片查看器 ====== -->
-    <div class="img-viewer-overlay" id="imgViewerOverlay" style="display:none;">
-      <button class="img-viewer-close" id="btnCloseViewer">&times;</button>
-      <img class="img-viewer-img" id="imgViewerImg" alt="报价单图片">
-    </div>
+    <div class="confirm-overlay" id="confirmOverlay" style="display:none;"><div class="confirm-dialog"><p class="confirm-message" id="confirmMessage">确定要清空全部记录吗？</p><div class="confirm-view-img" id="confirmViewImg" style="display:none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;margin-right:4px;"><rect x="2" y="4" width="20" height="16" rx="3" stroke="currentColor" stroke-width="1.6"/><circle cx="8.5" cy="9.5" r="2" stroke="currentColor" stroke-width="1.4"/><path d="M2 16l5-5 4 4 3-3 6 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>查看图片</div><div class="confirm-actions"><button class="confirm-btn confirm-cancel" id="confirmCancel">取消</button><button class="confirm-btn confirm-ok" id="confirmOk">确定</button></div></div></div>
+    <div class="modal-overlay" id="providerModal" style="display:none;"><div class="modal-sheet"><div class="modal-header"><h2 class="modal-title" id="providerModalTitle">添加模型提供商</h2><button class="modal-close" id="btnCloseProviderModal">&times;</button></div><div class="modal-body"><div class="form-group"><label class="form-label">快速选择</label><select class="form-select" id="quickSelectProvider"><option value="">-- 手动配置 --</option><option value="xiaomi">小米</option><option value="qwen">千问</option></select></div><div class="form-group"><label class="form-label">提供商 ID</label><input type="text" class="form-input" id="inputProviderId" placeholder="唯一标识，如 deepseek"></div><div class="form-group"><label class="form-label">Base URL</label><input type="url" class="form-input" id="inputBaseUrl" placeholder="https://api.example.com/v1"></div><div class="form-group"><label class="form-label">API 协议</label><select class="form-select" id="inputProtocol"><option value="openai">OpenAI Completions</option><option value="ocr">OCR 专用接口</option><option value="custom">自定义接口</option></select></div><div class="form-group"><label class="form-label">API Key</label><div class="form-input-wrap"><input type="password" class="form-input" id="inputApiKey" placeholder="sk-..."><button class="form-input-eye" id="btnToggleApiKey" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div><div class="form-group"><label class="form-label">模型列表 (<span id="modelCount">0</span> 个) <span class="auto-fetch-btn" id="btnAutoFetch">自动获取</span></label><div class="model-select-list" id="modalModelList"><p class="model-tag-empty" id="modalModelEmpty">暂无模型</p></div><div class="model-add-row"><input type="text" class="form-input" id="inputModelName" placeholder="模型名称，如 gpt-4o"><button class="btn-add-model" id="btnAddModel" type="button">+ 添加</button></div></div></div><div class="modal-footer"><button class="modal-btn modal-btn-cancel" id="btnCancelProvider">取消</button><button class="modal-btn modal-btn-save" id="btnSaveProvider">保存</button></div></div></div>
+    <!-- 图片查看器由 JS 动态创建，不再需要静态 HTML -->
   </div>
 
   <script src="js/utils.js"></script>
-  <script src="js/storage.js"></script>
+  <script src="js/photoswipe.min.js"></script>
+  <script src="js/photoswipe-lightbox.min.js"></script>
   <script src="js/calculator.js"></script>
-  <script src="js/providers.js"></script>
-  <script src="js/ocr.js"></script>
+  <script src="js/dialogs.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
