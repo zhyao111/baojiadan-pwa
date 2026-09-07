@@ -29,39 +29,86 @@ function getFormData() {
   };
 }
 
+// ====== 费率状态（基础费率 + 加投） ======
+// baseRates: 「快速填写费率」里的基础费率（不含加投）
+// pendingAdd: 「加投」值（交强险/商业险），作为持久叠加层
+// 展示规则：三个费率框 = 基础费率 + 加投；快速填写框 = 基础费率
+// 这样加投是幂等的：无论触发多少次、改多少次其他值，费率框始终 = 基础 + 加投，
+// 不会丢失、也不会重复累加。
+let baseRates = { c: 0, m: 0, n: 0 };
+let pendingAdd = { c: 0, m: 0 };
+
 // ====== 快速费率解析 ======
 function parseQuickRate(str) {
   const parts = str.split(/[\/\-\,\s]+/).filter(s => s.trim() !== '');
   return parts.map(s => parseFloat(s) || 0);
 }
 
-/** 快速填写费率 → 填入三个费率字段 */
+function formatRate(v) {
+  const n = Math.round(v * 100) / 100;
+  // 0 必须显示为 0（此前返回 '' 会被 getMissingRates 当成"没填费率"拦下，
+  // 导致"费率 0 = 直接显示保费"的功能永远走不到）
+  return n > 0 ? n : 0;
+}
+
+/** 重新渲染三个费率框 + 快速填写框（费率框 = 基础 + 加投） */
+function recomputeRates() {
+  const c = round2(baseRates.c + pendingAdd.c);
+  const m = round2(baseRates.m + pendingAdd.m);
+  const n = round2(baseRates.n);
+  document.getElementById('compulsoryRate').value = formatRate(c);
+  document.getElementById('commercialRate').value = formatRate(m);
+  document.getElementById('nonVehicleRate').value = formatRate(n);
+  // 快速填写框始终显示「基础费率」（不含加投）
+  document.getElementById('quickRate').value =
+    `${baseRates.c || '0'}/${baseRates.m || '0'}/${baseRates.n || '0'}`;
+}
+
+/** 快速填写费率 → 更新基础费率并重算（费率框 = 基础 + 加投） */
 function applyQuickRate(value) {
   const rates = parseQuickRate(value);
-  const els = [
-    document.getElementById('compulsoryRate'),
-    document.getElementById('commercialRate'),
-    document.getElementById('nonVehicleRate'),
-  ];
-  rates.forEach((r, i) => { if (i < els.length) els[i].value = r; });
+  if (rates.length >= 1) baseRates.c = rates[0] || 0;
+  if (rates.length >= 2) baseRates.m = rates[1] || 0;
+  if (rates.length >= 3) baseRates.n = rates[2] || 0;
+  recomputeRates();
 }
 
-// ====== 加投 ======
+// ====== 加投（幂等：每次只设置加投状态并重算，不做累加） ======
 function applyAddInvest(value) {
-  const addRates = parseDoubleInput(value);
-  if (!addRates) return;
-  const crEl = document.getElementById('compulsoryRate');
-  const mrEl = document.getElementById('commercialRate');
-  crEl.value = addValue(crEl.value, addRates[0]);
-  mrEl.value = addValue(mrEl.value, addRates[1]);
+  const str = String(value == null ? '' : value).trim();
+  if (!str) {
+    // 加投被清空 → 移除叠加层
+    pendingAdd = { c: 0, m: 0 };
+    recomputeRates();
+    return;
+  }
+  const addRates = parseDoubleInput(str);
+  if (!addRates) return; // 格式非法，保持原加投不变
+  pendingAdd = { c: addRates[0], m: addRates[1] };
+  recomputeRates();
 }
 
-/** 从三个费率反填快速填写框 (不触发用户事件) */
+/** 从三个费率框反填快速填写框：费率框里改的是「最终费率」，据此倒推基础费率 */
 function syncRatesToQuick() {
-  const c = document.getElementById('compulsoryRate').value || '0';
-  const m = document.getElementById('commercialRate').value || '0';
-  const n = document.getElementById('nonVehicleRate').value || '0';
-  document.getElementById('quickRate').value = `${c}/${m}/${n}`;
+  const c = num(document.getElementById('compulsoryRate').value);
+  const m = num(document.getElementById('commercialRate').value);
+  const n = num(document.getElementById('nonVehicleRate').value);
+  baseRates.c = Math.max(0, round2(c - pendingAdd.c));
+  baseRates.m = Math.max(0, round2(m - pendingAdd.m));
+  baseRates.n = n;
+  recomputeRates();
+}
+
+/**
+ * 输入过程中：明细框当前值倒推基础费率，仅更新快速填写框，不回写费率框。
+ * 如果用 recomputeRates 逐键回写，会吃掉正在输入的小数点和前导零
+ * （曾导致输 0.5 变成 5、输 12.5 变成 125）。完整重算交给 blur/Enter 时的 syncRatesToQuick。
+ */
+function syncQuickOnly() {
+  const c = Math.max(0, round2(num(document.getElementById('compulsoryRate').value) - pendingAdd.c));
+  const m = Math.max(0, round2(num(document.getElementById('commercialRate').value) - pendingAdd.m));
+  const n = round2(num(document.getElementById('nonVehicleRate').value));
+  document.getElementById('quickRate').value = `${c || '0'}/${m || '0'}/${n || '0'}`;
 }
 
 // ====== 计算 ======
@@ -170,21 +217,7 @@ function formatPlanText(data, results) {
   if (fee > 0) lines.push(`手续费：${fee}元`);
 
   if (results.afterTax > 0) {
-    if (results.allRatesZero) {
-      lines.push(`实付为：${premium.toFixed(2)}元`);
-    } else if (results.allRatesNonZero) {
-      lines.push(`实付为：${(premium - results.afterTax).toFixed(2)}元`);
-    } else {
-      // 混合情况：部分险种费率为0（保费直接计入），部分按手续费计算
-      let feePart = 0, premiumPart = 0;
-      if (data.compulsoryAmount > 0 && !results.compulsoryRateZero) feePart += results.compulsoryFee;
-      else if (data.compulsoryAmount > 0) premiumPart += data.compulsoryAmount;
-      if (data.commercialAmount > 0 && !results.commercialRateZero) feePart += results.commercialFee;
-      else if (data.commercialAmount > 0) premiumPart += data.commercialAmount;
-      if (data.nonVehicleAmount > 0 && !results.nonVehicleRateZero) feePart += results.nonVehicleFee;
-      else if (data.nonVehicleAmount > 0) premiumPart += data.nonVehicleAmount;
-      lines.push(`实付为：${(premium - premiumPart - feePart).toFixed(2)}元`);
-    }
+    lines.push(`实付为：${(premium - results.afterTax).toFixed(2)}元`);
   }
   return lines.join('\n');
 }

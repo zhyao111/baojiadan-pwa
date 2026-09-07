@@ -79,8 +79,9 @@ function num(v) {
 // ====== 字符串工具 ======
 function escapeHtml(str) {
   const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
+  div.textContent = str == null ? '' : String(str);
+  // innerHTML 只转义 & < >，补上引号转义，保证在 HTML 属性（value="..."、data-value="..." 等）里也安全
+  return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 function copyToClipboard(text) {
@@ -133,7 +134,7 @@ function parseTripleInput(str) {
 
 function parseDoubleInput(str) {
   if (!str) return null;
-  const parts = str.split(/[\/\-\,]+/).map((s) => parseFloat(s.trim()));
+  const parts = str.split(/[\/\-\,\s]+/).map((s) => parseFloat(s.trim()));
   if (parts.length === 2 && parts.every((n) => !isNaN(n))) return parts;
   return null;
 }

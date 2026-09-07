@@ -139,19 +139,30 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // 快速填写费率
+  // 快速填写费率（blur + Enter）
   quickRate.addEventListener('blur', () => {
     applyQuickRate(quickRate.value);
   });
-
-  // 加投
-  addInvest.addEventListener('blur', () => {
-    applyAddInvest(addInvest.value);
+  quickRate.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); applyQuickRate(quickRate.value); }
   });
 
-  // 费率变化 → 同步到快速填写
+  // 加投：input + blur + Enter 都触发，不依赖失焦（避免部分机型失焦不触发导致不生效）
+  addInvest.addEventListener('input', () => applyAddInvest(addInvest.value));
+  addInvest.addEventListener('blur', () => applyAddInvest(addInvest.value));
+  addInvest.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); applyAddInvest(addInvest.value); }
+  });
+
+  // 费率变化 → 以最终费率倒推基础费率，再同步快速填写
+  // input 时只同步快速填写框（不回写费率框，避免逐键重写吃掉小数点/前导零，
+  // 曾导致输 0.5 变成 5、输 12.5 变成 125）；失焦/回车时才做完整重算格式化
   [compulsoryRate, commercialRate, nonVehicleRate].forEach((el) => {
-    el.addEventListener('input', syncRatesToQuick);
+    el.addEventListener('input', syncQuickOnly);
+    el.addEventListener('blur', syncRatesToQuick);
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); syncRatesToQuick(); }
+    });
   });
 
   // ====== 计算流程 ======
@@ -165,6 +176,8 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    // 先捕获加投（幂等，即使失焦未触发也生效），再按快速费率重算
+    applyAddInvest(addInvest.value);
     // 从快速填写解析并填入费率
     applyQuickRate(quickRate.value.trim());
     const data = getFormData();
@@ -230,6 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ====== 重置 ======
   btnReset.addEventListener('click', () => {
+    invalidateOcrRun(); // 作废进行中的识别，避免重置后被旧结果回填
     allInputs.forEach(input => (input.value = ''));
     document.getElementById('compulsoryExpiryYear').value = '';
     document.getElementById('compulsoryExpiryMonth').value = '';
@@ -242,6 +256,9 @@ document.addEventListener('DOMContentLoaded', () => {
     ocrExpiry.commercial = '';
     ocrExpiry.nonVehicle = '';
     lastCalculatedData = null;
+    // 重置费率状态（基础费率 + 加投叠加层）
+    baseRates = { c: 0, m: 0, n: 0 };
+    pendingAdd = { c: 0, m: 0 };
   });
 
   // ====== 图片查看器（PhotoSwipe） ======
@@ -356,6 +373,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (file.size > MAX_SIZE_MB * 1024 * 1024) { showToast(`图片大小不能超过 ${MAX_SIZE_MB}MB`); return; }
     document.getElementById('quickRate').value = '';
     setTimeout(function() { document.getElementById('quickRate').focus(); }, 300);
+    invalidateOcrRun(); // 作废上一轮进行中的识别
     showImagePreview(file);
   });
 
@@ -380,6 +398,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   btnRemoveImg.addEventListener('click', () => {
+    invalidateOcrRun(); // 作废进行中的识别
     _currentImgSrc = null;
     imgPreview.src = '';
     imgPreviewWrap.style.display = 'none';
@@ -407,18 +426,38 @@ document.addEventListener('DOMContentLoaded', () => {
 - 未找到的字段填0或空字符串
 - 只返回JSON`;
 
+  // ====== OCR 识别（可取消：换图/删图/重置会作废进行中的一轮） ======
+  let ocrRunId = 0;     // 识别轮次序号，递增即作废旧一轮
+  let ocrAbort = null;  // 当前进行中识别的 AbortController
+
+  function invalidateOcrRun() {
+    ocrRunId++;
+    if (ocrAbort) {
+      try { ocrAbort.abort(); } catch (e) { /* noop */ }
+      ocrAbort = null;
+    }
+  }
+
   async function recognizeImage(file, provider) {
+    const runId = ++ocrRunId;
+    const startTime = Date.now(); // 本轮总耗时起点（失败时展示用）
+    const myAbort = new AbortController();
+    ocrAbort = myAbort;
+    const signal = myAbort.signal;
+    const isStale = () => runId !== ocrRunId; // 已被更新的一轮取代
     try {
       const base64 = await fileToBase64(file);
       const compressed = await resizeImage(base64, 1600, 0.8);
       const compressedBase64 = compressed.split(',')[1] || '';
+      if (isStale()) return;
 
       const dualCfg = getDualConfig();
       const allProviders = getProviders().filter(p => p.models?.length);
 
       if (!dualCfg.enabled || dualCfg.models.length <= 1) {
-        const result = await tryWithFailover(provider, compressed, compressedBase64, file.type);
-        imgPreviewStatus.textContent = `${result.providerName} · ${result.modelName} — 识别完成`;
+        const result = await tryWithFailover(provider, compressed, compressedBase64, file.type, null, signal);
+        if (isStale()) return;
+        imgPreviewStatus.textContent = `${result.providerName} · ${result.modelName} — 识别完成 (${result.elapsed}s)`;
         imgPreviewStatus.className = 'img-preview-status';
         applyOCRResult(result.data);
         showToast('识别完成，已自动填入数据');
@@ -433,7 +472,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (modelsToUse.length <= 1) {
         const p = modelsToUse[0]?.provider || provider;
-        const result = await tryWithFailover(p, compressed, compressedBase64, file.type);
+        const result = await tryWithFailover(p, compressed, compressedBase64, file.type, null, signal);
+        if (isStale()) return;
         imgPreviewStatus.textContent = '识别完成';
         imgPreviewStatus.className = 'img-preview-status';
         applyOCRResult(result.data);
@@ -445,7 +485,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (modelsToUse.length > maxCount) modelsToUse = modelsToUse.slice(0, maxCount);
       if (modelsToUse.length <= 1) {
         const p = modelsToUse[0]?.provider || provider;
-        const result = await tryWithFailover(p, compressed, compressedBase64, file.type);
+        const result = await tryWithFailover(p, compressed, compressedBase64, file.type, null, signal);
+        if (isStale()) return;
         imgPreviewStatus.textContent = '识别完成';
         imgPreviewStatus.className = 'img-preview-status';
         applyOCRResult(result.data);
@@ -460,22 +501,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const results = await Promise.allSettled(
         modelsToUse.map(async ({ provider: p, model }) => {
-          const originalModel = p.selectedModel;
-          p.selectedModel = model;
-          const result = await tryWithFailover(p, compressed, compressedBase64, file.type);
-          p.selectedModel = originalModel;
+          // 显式传模型，不修改共享 provider 的 selectedModel（避免并发竞态）
+          const result = await tryWithFailover(p, compressed, compressedBase64, file.type, model, signal);
           completed++;
-          imgPreviewStatus.textContent = `正在识别 (${completed}/${total})...`;
+          if (!isStale()) imgPreviewStatus.textContent = `正在识别 (${completed}/${total})...`;
           return result;
         })
       );
+
+      if (isStale()) return;
 
       const succeeded = results.filter(r => r.status === 'fulfilled').map(r => r.value);
       if (succeeded.length === 0) throw new Error('所有模型识别失败');
 
       if (succeeded.length === 1) {
         const r = succeeded[0];
-        imgPreviewStatus.textContent = '识别完成';
+        imgPreviewStatus.textContent = `${r.providerName} · ${r.modelName} — 识别完成 (${r.elapsed}s)`;
         imgPreviewStatus.className = 'img-preview-status';
         applyOCRResult(r.data);
         showToast('识别完成，已自动填入数据');
@@ -493,6 +534,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (allConflicts.length > 0) {
         const chosen = await showConflictDialog(allConflicts, succeeded, imgPreview.src);
+        if (isStale()) return;
         if (chosen) {
           merged = chosen;
         } else {
@@ -503,16 +545,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      imgPreviewStatus.textContent = '多重识别完成';
+      imgPreviewStatus.textContent = `多重识别完成 (${succeeded.map(r => `${r.providerName} ${r.elapsed}s`).join(' / ')})`;
       imgPreviewStatus.className = 'img-preview-status';
       applyOCRResult(merged);
       showToast(allConflicts.length > 0 ? '已选择您确认的数据' : '多重识别一致，已自动填入数据');
 
     } catch (err) {
+      if (isStale()) return; // 已被新一轮识别取代，静默丢弃
       debugLog('OCR error:', err);
-      imgPreviewStatus.textContent = '识别失败：' + (err.message || '未知错误');
+      // PWA 补丁：30s 超时的 AbortError 英文原文对用户无意义，映射为可读文案
+      const errMsg = err.name === 'AbortError' ? '识别超时，请重试' : (err.message || '未知错误');
+      imgPreviewStatus.textContent = '识别失败：' + errMsg + ` (耗时 ${((Date.now() - startTime) / 1000).toFixed(1)}s)`;
       imgPreviewStatus.className = 'img-preview-status error';
       showToast('识别失败，请检查配置后重试');
+    } finally {
+      if (ocrAbort === myAbort) ocrAbort = null;
     }
   }
 
@@ -535,25 +582,41 @@ document.addEventListener('DOMContentLoaded', () => {
     return { data: merged, conflictCount: conflictFields.length, conflictFields };
   }
 
-  async function tryWithFailover(provider, dataUrl, base64, mimeType) {
-    const model = provider.selectedModel || provider.models?.[0] || '';
+  async function tryWithFailover(provider, dataUrl, base64, mimeType, modelOverride, signal) {
+    // modelOverride 显式指定模型（多重识别用），不修改共享 provider 的 selectedModel，
+    // 避免同提供商多模型并发时互相污染、以及失败后忘记还原的问题
+    const model = modelOverride || provider.selectedModel || provider.models?.[0] || '';
+    const t0 = Date.now();
+    const data = await callProviderAPI(provider, model, dataUrl, base64, mimeType, signal);
+    // PWA 补丁：上游返回空 content 时 parseOCRJson 兜底解析得到全 0/空结果，
+    // 此前会被当"识别成功"并把已填好的表单清空。全空即视为识别失败。
+    if (!data.company && !data.plate && !data.compulsoryAmount && !data.commercialAmount && !data.nonVehicleAmount && !data.vehicleTax) {
+      throw new Error('未识别到有效数据，请换一张更清晰的图片重试');
+    }
     return {
       providerName: provider.name,
       modelName: model,
-      data: await callProviderAPI(provider, model, dataUrl, base64, mimeType),
+      data,
+      elapsed: ((Date.now() - t0) / 1000).toFixed(1), // 该模型识别耗时（秒），纯展示用
     };
   }
 
-  // ---- API 超时控制 ----
-  async function callProviderAPI(provider, modelName, dataUrl, base64, mimeType) {
+  // ---- API 超时/取消控制 ----
+  async function callProviderAPI(provider, modelName, dataUrl, base64, mimeType, signal) {
     if (provider.protocol === 'ocr') {
-      return await callOCRInterface(provider, modelName, base64, mimeType);
+      return await callOCRInterface(provider, modelName, base64, mimeType, signal);
     }
-    return await callOpenAICompatible(provider, modelName, dataUrl);
+    return await callOpenAICompatible(provider, modelName, dataUrl, signal);
   }
 
-  async function callOpenAICompatible(provider, model, dataUrl) {
+  // externalSignal：换图/删图/重置时作废进行中的识别，级联取消未完成的请求
+  async function callOpenAICompatible(provider, model, dataUrl, externalSignal) {
     const controller = new AbortController();
+    const onExternalAbort = () => controller.abort();
+    if (externalSignal) {
+      if (externalSignal.aborted) controller.abort();
+      else externalSignal.addEventListener('abort', onExternalAbort);
+    }
     const timeout = setTimeout(() => controller.abort(), 30000);
 
     try {
@@ -577,11 +640,17 @@ document.addEventListener('DOMContentLoaded', () => {
       return parseOCRJson(content);
     } finally {
       clearTimeout(timeout);
+      if (externalSignal) externalSignal.removeEventListener('abort', onExternalAbort);
     }
   }
 
-  async function callOCRInterface(provider, model, base64, mimeType) {
+  async function callOCRInterface(provider, model, base64, mimeType, externalSignal) {
     const controller = new AbortController();
+    const onExternalAbort = () => controller.abort();
+    if (externalSignal) {
+      if (externalSignal.aborted) controller.abort();
+      else externalSignal.addEventListener('abort', onExternalAbort);
+    }
     const timeout = setTimeout(() => controller.abort(), 30000);
     try {
       const resp = await fetch(provider.baseUrl, {
@@ -599,6 +668,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return parseOCRJson(content);
     } finally {
       clearTimeout(timeout);
+      if (externalSignal) externalSignal.removeEventListener('abort', onExternalAbort);
     }
   }
 
@@ -665,35 +735,35 @@ document.addEventListener('DOMContentLoaded', () => {
     const data = getFormData();
     const results = calculate(data);
     const text = formatPlanText(data, results);
-    console.log('[SHARE] 开始分享, text长度:', text.length);
+    debugLog('[SHARE] 开始分享, text长度:', text.length);
     // 1. Capacitor Share 插件
     try {
       const { Share } = window.Capacitor?.Plugins || {};
       if (Share) {
-        console.log('[SHARE] 使用 Capacitor Share');
+        debugLog('[SHARE] 使用 Capacitor Share');
         const result = await Share.share({ title: '车险报价单', text: text, dialogTitle: '分享报价单' });
-        console.log('[SHARE] Share 结果:', JSON.stringify(result));
+        debugLog('[SHARE] Share 结果:', JSON.stringify(result));
         return;
       }
-      console.log('[SHARE] Capacitor Share 不可用');
+      debugLog('[SHARE] Capacitor Share 不可用');
     } catch (e) {
-      console.log('[SHARE] Capacitor Share 失败:', e.message || e);
+      debugLog('[SHARE] Capacitor Share 失败:', e.message || e);
     }
     // 2. Web Share API
     try {
       if (navigator.share) {
-        console.log('[SHARE] 使用 navigator.share');
+        debugLog('[SHARE] 使用 navigator.share');
         await navigator.share({ title: '车险报价单', text: text });
-        console.log('[SHARE] navigator.share 成功');
+        debugLog('[SHARE] navigator.share 成功');
         return;
       }
-      console.log('[SHARE] navigator.share 不可用');
+      debugLog('[SHARE] navigator.share 不可用');
     } catch (e) {
-      console.log('[SHARE] navigator.share 失败:', e.name, e.message);
+      debugLog('[SHARE] navigator.share 失败:', e.name, e.message);
       if (e.name === 'AbortError') return; // 用户取消
     }
     // 3. 最终兜底：复制到剪贴板
-    console.log('[SHARE] fallback 到剪贴板');
+    debugLog('[SHARE] fallback 到剪贴板');
     copyToClipboard(text);
     showToast('已复制到剪贴板');
   });
@@ -702,7 +772,9 @@ document.addEventListener('DOMContentLoaded', () => {
   btnSaveRecord.addEventListener('click', async () => {
     const data = getFormData();
     const results = calculate(data);
-    if (results.total === 0) { showToast('请先填写数据并计算'); return; }
+    // PWA 补丁：total（手续费）为 0 但保费合计 > 0 是合法报价（v1.0.5 费率填 0 直通保费），
+    // 只有保费合计也为 0（真正没填数据）才拦截保存
+    if (results.total === 0 && results.premiumTotal === 0) { showToast('请先填写数据并计算'); return; }
 
     const record = {
       id: Date.now(),
@@ -715,22 +787,26 @@ document.addEventListener('DOMContentLoaded', () => {
       imageData: null,
     };
 
-    // 保存图片：优先存 imageData（直接存 base64），localImage 作为备选
+    // 保存图片：localImage（Filesystem 压缩图）为主，imageData（压缩后 base64）兜底。
+    // 注意不能直接存原图 base64——原图可达数 MB，会打爆 localStorage 配额导致保存静默失败
     var imgSrc = _currentImgSrc || (imgPreview.src && imgPreviewWrap.style.display !== 'none' ? imgPreview.src : null);
     if (imgSrc) {
       try {
-        // 直接存 base64 到记录（不依赖 Filesystem）
-        record.imageData = imgSrc;
-        // 也尝试存到 Filesystem
-        try {
-          const localPath = await saveImageToLocal(imgSrc, record.id);
-          record.localImage = localPath;
-        } catch (e) { debugLog('Filesystem 保存失败，使用 imageData:', e); }
-      } catch (e) { debugLog('图片保存失败:', e); }
+        const localPath = await saveImageToLocal(imgSrc, record.id);
+        record.localImage = localPath;
+      } catch (e) { debugLog('Filesystem 保存失败，使用 imageData:', e); }
+      try {
+        record.imageData = await resizeImage(imgSrc, 1600, 0.8);
+      } catch (e) { debugLog('图片压缩失败，跳过 imageData:', e); }
     }
 
-    saveRecord(record);
-    showToast('已保存到记录');
+    try {
+      saveRecord(record);
+      showToast('已保存到记录');
+    } catch (e) {
+      debugLog('保存记录失败:', e);
+      showToast('保存失败：存储空间不足，可删除部分历史记录后重试');
+    }
   });
 
   async function saveImageToLocal(dataUrl, recordId) {
@@ -802,8 +878,12 @@ document.addEventListener('DOMContentLoaded', () => {
   function saveRecord(record) {
     const records = getRecords();
     const existIdx = records.findIndex(r => r.plate === record.plate && r.company === record.company);
-    if (existIdx >= 0) { records[existIdx] = record; }
-    else { records.unshift(record); }
+    if (existIdx >= 0) {
+      // 覆盖同车牌+公司的旧记录：清理旧记录的本地图片文件，避免孤儿文件占空间
+      const old = records[existIdx];
+      if (old.localImage && old.localImage !== record.localImage) deleteLocalImage(old.localImage);
+      records[existIdx] = record;
+    } else { records.unshift(record); }
     localStorage.setItem(RECORDS_KEY, JSON.stringify(records));
   }
 
@@ -894,6 +974,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (record.compulsoryRate && record.commercialRate && record.nonVehicleRate) {
       quickRate.value = `${record.compulsoryRate}/${record.commercialRate}/${record.nonVehicleRate}`;
     }
+    // 恢复的记录费率作为「最终费率」，加投叠加层 = 记录中保存的加投值
+    // （记录费率已含加投时，倒推基础费率，避免恢复后再点计算重复累加）
+    const savedAdd = parseDoubleInput(String(record.addInvest || '').trim());
+    pendingAdd = savedAdd ? { c: savedAdd[0], m: savedAdd[1] } : { c: 0, m: 0 };
+    baseRates = {
+      c: Math.max(0, round2(num(record.compulsoryRate) - pendingAdd.c)),
+      m: Math.max(0, round2(num(record.commercialRate) - pendingAdd.m)),
+      n: num(record.nonVehicleRate),
+    };
+    recomputeRates();
     // 恢复图片：优先用 imageData（存在记录中的 base64），其次用 localImage（Filesystem）
     var restoredImg = false;
     if (record.imageData) {
@@ -1045,18 +1135,22 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <div class="provider-card-meta">${escapeHtml(p.baseUrl)}</div>
         ${dualModels.length ? `<div class="provider-card-dual-models">${dualModels.map(m => `<span class="provider-model-chip" style="background:var(--primary-light);color:var(--primary);">${escapeHtml(m)}</span>`).join('')}</div>` : ''}
-        ${!dualEnabled ? `<select class="provider-model-select" data-action="switchModel" data-id="${p.id}">${(p.models || []).map(m => `<option value="${escapeHtml(m)}"${m === (p.selectedModel || p.models[0]) ? ' selected' : ''}>${escapeHtml(m)}</option>`).join('')}</select>` : ''}
+        ${!dualEnabled ? `<select class="provider-model-select" data-action="switchModel" data-id="${escapeHtml(p.id)}">${(p.models || []).map(m => `<option value="${escapeHtml(m)}"${m === (p.selectedModel || p.models[0]) ? ' selected' : ''}>${escapeHtml(m)}</option>`).join('')}</select>` : ''}
         <div class="provider-card-actions">
-          ${!dualEnabled ? `<button class="provider-action-btn provider-action-select" data-action="select" data-id="${p.id}">${isActive ? '当前使用' : '使用此模型'}</button>` : ''}
-          <button class="provider-action-btn provider-action-test" data-action="test" data-id="${p.id}">测试</button>
-          <button class="provider-action-btn provider-action-edit" data-action="edit" data-id="${p.id}">编辑</button>
-          <button class="provider-action-btn provider-action-delete" data-action="delete" data-id="${p.id}">删除</button>
+          ${!dualEnabled ? `<button class="provider-action-btn provider-action-select" data-action="select" data-id="${escapeHtml(p.id)}">${isActive ? '当前使用' : '使用此模型'}</button>` : ''}
+          <button class="provider-action-btn provider-action-test" data-action="test" data-id="${escapeHtml(p.id)}">测试</button>
+          <button class="provider-action-btn provider-action-edit" data-action="edit" data-id="${escapeHtml(p.id)}">编辑</button>
+          <button class="provider-action-btn provider-action-delete" data-action="delete" data-id="${escapeHtml(p.id)}">删除</button>
         </div>`;
       providerListEl.appendChild(card);
     });
+  }
 
-    // 事件委托
-    providerListEl.addEventListener('click', (e) => {
+  // 事件委托（绑定一次即可：renderProviders 会反复重渲染，
+  // 监听器写在函数内部会随每次渲染叠加，导致一次点击触发多次）
+  (function bindProviderListEvents() {
+    const listEl = $('#providerList');
+    listEl.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-action]');
       if (!btn) return;
       const action = btn.dataset.action, id = btn.dataset.id;
@@ -1065,8 +1159,7 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (action === 'delete') { deleteProvider(id); }
       else if (action === 'test') { testProvider(id); }
     });
-
-    providerListEl.addEventListener('change', (e) => {
+    listEl.addEventListener('change', (e) => {
       if (e.target.dataset.action === 'switchModel') {
         const id = e.target.dataset.id, model = e.target.value;
         const providers = getProviders();
@@ -1074,7 +1167,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (p) { p.selectedModel = model; saveProviders(providers); showToast(`已切换到 ${model}`); }
       }
     });
-  }
+  })();
 
   // ====== 提供商弹窗 ======
   function openProviderModal(editId) {
@@ -1201,17 +1294,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const name = PROVIDER_PRESETS[id] ? PROVIDER_PRESETS[id].name : id;
     const providers = getProviders();
     if (editingProviderId) {
+      // PWA 补丁：编辑分支同样校验 ID 唯一性（改成已有 ID 会产生重复 id）
+      if (providers.some(p => p.id === id && p.id !== editingProviderId)) { showToast('提供商 ID 已存在'); return; }
       const idx = providers.findIndex(p => p.id === editingProviderId);
-      if (idx >= 0) providers[idx] = { ...providers[idx], id, name, baseUrl, apiKey, protocol, models: [...modalModels], selectedModel: modalModels[0] || '' };
+      if (idx >= 0) {
+        providers[idx] = { ...providers[idx], id, name, baseUrl, apiKey, protocol, models: [...modalModels], selectedModel: modalModels[0] || '' };
+        // PWA 补丁：ID 变更时同步迁移 active 引用与多重识别队列里的 providerId，避免孤儿引用
+        if (id !== editingProviderId) {
+          if (getActiveProviderId() === editingProviderId) setActiveProvider(id);
+          const dualCfg = getDualConfig();
+          let dualChanged = false;
+          dualCfg.models.forEach(m => { if (m.providerId === editingProviderId) { m.providerId = id; dualChanged = true; } });
+          if (dualChanged) saveDualConfig(dualCfg);
+        }
+      }
     } else {
       if (providers.some(p => p.id === id)) { showToast('提供商 ID 已存在'); return; }
       providers.push({ id, name, baseUrl, apiKey, protocol, models: [...modalModels], selectedModel: modalModels[0] || '' });
       if (!getActiveProviderId()) setActiveProvider(id);
     }
+    const isEdit = !!editingProviderId; // closeProviderModal 会清空该值，先取好
     saveProviders(providers);
     closeProviderModal();
     renderProviders();
-    showToast(editingProviderId ? '已更新' : '已添加');
+    showToast(isEdit ? '已更新' : '已添加');
   });
 
   // ====== 双重识别配置 ======
@@ -1375,7 +1481,7 @@ document.addEventListener('DOMContentLoaded', () => {
       models.forEach((item, i) => {
         html += `<div class="exclude-model-item" data-idx="${i}" style="display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:6px;background:var(--card-bg);border:1.5px solid var(--border);border-radius:10px;cursor:pointer;transition:all 0.15s;">`;
         html += `<span class="exclude-checkbox" style="width:20px;height:20px;border-radius:6px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s;"></span>`;
-        html += `<div style="flex:1;"><div style="font-weight:500;font-size:0.85rem;">${item.provider.name || item.provider.id}</div><div style="font-size:0.75rem;color:var(--text-secondary);">${item.model}</div></div></div>`;
+        html += `<div style="flex:1;"><div style="font-weight:500;font-size:0.85rem;">${escapeHtml(item.provider.name || item.provider.id)}</div><div style="font-size:0.75rem;color:var(--text-secondary);">${escapeHtml(item.model)}</div></div></div>`;
       });
       html += '<div style="display:flex;gap:10px;margin-top:16px;"><button class="confirm-btn confirm-cancel" id="excludeCancel" style="flex:1;">取消</button><button class="confirm-btn confirm-ok" id="excludeConfirm" style="flex:1;">确定</button></div></div>';
       dialog.innerHTML = html; overlay.appendChild(dialog); document.body.appendChild(overlay);
@@ -1415,7 +1521,7 @@ document.addEventListener('DOMContentLoaded', () => {
       availableModels.forEach((item, i) => {
         html += `<div class="select-model-item" data-idx="${i}" style="display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:6px;background:var(--card-bg);border:1.5px solid var(--border);border-radius:10px;cursor:pointer;transition:all 0.15s;">`;
         html += `<span class="select-checkbox" style="width:20px;height:20px;border-radius:6px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s;"></span>`;
-        html += `<div style="flex:1;"><div style="font-weight:500;font-size:0.85rem;">${item.provider.name || item.provider.id}</div><div style="font-size:0.75rem;color:var(--text-secondary);">${item.model}</div></div></div>`;
+        html += `<div style="flex:1;"><div style="font-weight:500;font-size:0.85rem;">${escapeHtml(item.provider.name || item.provider.id)}</div><div style="font-size:0.75rem;color:var(--text-secondary);">${escapeHtml(item.model)}</div></div></div>`;
       });
       html += '<div style="display:flex;gap:10px;margin-top:16px;"><button class="confirm-btn confirm-cancel" id="selectModelCancel" style="flex:1;">取消</button><button class="confirm-btn confirm-ok" id="selectModelConfirm" style="flex:1;">确定</button></div></div>';
       dialog.innerHTML = html; overlay.appendChild(dialog); document.body.appendChild(overlay);
@@ -1510,4 +1616,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // ====== 初始化 ======
   renderRecords();
   renderProviders();
+
+  // ====== 更新检查 ======
+  (function setupUpdate() {
+    // 启动后自动静默检查（24h 冷却）
+    if (window.Updater) window.Updater.autoCheckOnStartup();
+    // 设置 -> 检查更新 按钮
+    var btnCheckUpdate = $('#btnCheckUpdate');
+    if (btnCheckUpdate && window.Updater) {
+      btnCheckUpdate.addEventListener('click', function () {
+        window.Updater.checkUpdate({ force: true, silent: false });
+      });
+    }
+  })();
 });

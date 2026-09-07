@@ -27,6 +27,10 @@
   --font-scale: 1;
 
   --sab: env(safe-area-inset-bottom, 0px);
+  /* 顶部安全区：JS 取 env 与兜底值的最大者写入 --sat；--sab 只由 env() 提供，JS 永不覆写
+     （此前线上版用 screen.height - innerHeight 估底部安全区，在手机浏览器里等于把
+      浏览器工具栏高度塞给了 --sab，导致导航栏下方出现大块空白——已废弃该算法） */
+  --sat-env: env(safe-area-inset-top, 0px);
 
   /* Named colors — use these instead of raw hex in rulesets */
   --color-compulsory: #E8734A;
@@ -60,6 +64,13 @@ html, body {
   padding: 0;
   width: 100%;
   height: 100%;
+  background: var(--bg); /* 用 var(--bg) 而非 #FFFFFF：html 有背景会挡住 body 深色传播，深色模式回弹区域全白 */
+}
+/* dvh 可用时动态跟随浏览器工具栏伸缩（iOS Safari / Android Chrome）；
+   不可用时保持 height:100%（小视口高度）——宁可略短留一线背景，
+   也绝不高于可见区域，从根上杜绝导航栏下方出现空白 */
+@supports (height: 1dvh) {
+  html, body { height: 100dvh; }
 }
 
 body {
@@ -69,6 +80,8 @@ body {
   color: var(--text);
   line-height: 1.5;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ========== Utility Classes ========== */
@@ -76,21 +89,15 @@ body {
 
 /* ========== App Container ========== */
 .app {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  width: 100%;
   max-width: 480px;
   margin: 0 auto;
+  flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  min-height: 100dvh;
-}
-
-.app.safe-bottom {
-  bottom: 0;
+  background: var(--bg);
+  min-height: 0;
 }
 
 /* ========== Header ========== */
@@ -98,9 +105,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 20px;
-  padding-top: calc(14px + var(--sat, 0px));
-  height: var(--header-height);
+  padding: calc(var(--sat, 28px) + 24px) 20px 14px;
   flex-shrink: 0;
   background: var(--bg);
 }
@@ -114,25 +119,28 @@ body {
 /* ========== Tab Content ========== */
 .tab-content {
   display: none;
-  flex: 1;
+  flex: 1 1 auto;
   overflow: hidden;
   min-height: 0;
   position: relative;
 }
 
 .tab-content.active {
-  display: block;
+  display: flex;
+  flex-direction: column;
   min-height: 0;
 }
 
 .scroll-area {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  overflow-y: auto;
+  flex: 1 1 auto;
+  overflow-y: scroll;
   overflow-x: hidden;
-  padding: 0 16px 80px;
+  padding: 0 16px 120px;
+  /* 横屏（未锁定方向的浏览器环境）时两侧避开刘海/传感器区 */
+  padding: 0 max(16px, env(safe-area-inset-right, 0px)) 120px max(16px, env(safe-area-inset-left, 0px));
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
+  min-height: 0;
   will-change: scroll-position;
 }
 
@@ -772,6 +780,25 @@ input[type="number"] {
   padding-bottom: 8px;
 }
 
+/* ---- Update Dialog ---- */
+.update-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 10px;
+  text-align: center;
+}
+.update-note {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  background: var(--input-bg);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 10px 0 14px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
 /* ---- Font Size Settings ---- */
 .settings-font-size {
   background: var(--card-bg);
@@ -1124,6 +1151,7 @@ input[type="number"] {
   width: 100%;
   max-width: 480px;
   max-height: 90vh;
+  max-height: 90dvh; /* 移动端 vh=最大视口，工具栏展开时 90vh 会顶出屏幕；dvh 跟随可见区域 */
   display: flex;
   flex-direction: column;
   animation: slideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1);
@@ -1906,6 +1934,7 @@ input[type="number"] {
   padding: clamp(16px, 3vw, 24px) clamp(16px, 3vw, 20px) clamp(12px, 2.4vw, 16px);
   animation: popIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
   max-height: calc(90vh - var(--sab, 0px));
+  max-height: calc(90dvh - var(--sab, 0px));
   margin-bottom: var(--sab, 0px);
 }
 
@@ -1914,6 +1943,7 @@ input[type="number"] {
   display: flex;
   flex-direction: column;
   max-height: calc(85vh - var(--sab, 0px));
+  max-height: calc(85dvh - var(--sab, 0px));
   overflow: hidden;
 }
 .confirm-dialog-header {
@@ -1990,6 +2020,15 @@ input[type="number"] {
   background: #E5E5E5;
 }
 
+.confirm-alt {
+  background: #EAF2FF;
+  color: #2B6CB0;
+}
+
+.confirm-alt:active {
+  background: #DCE9FF;
+}
+
 .confirm-ok {
   background: var(--color-danger);
   color: white;
@@ -2001,20 +2040,21 @@ input[type="number"] {
 
 /* ========== Bottom Navigation ========== */
 .bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 999;
   display: flex;
   align-items: center;
   justify-content: space-around;
   height: calc(60px + var(--sab, 0px));
   padding-bottom: var(--sab, 0px);
-  flex-shrink: 0;
   background: var(--card-bg);
   border-top: 1px solid var(--color-muted-dark);
-  max-width: 480px;
-  margin: 0 auto;
-  width: 100%;
 }
 
-/* Max-width centering (保留 .bottom-nav-wrap 以备兼容，PWA 不使用) */
+/* Max-width centering */
 .bottom-nav-wrap {
   position: fixed;
   left: 0;
@@ -2102,6 +2142,9 @@ input[type="number"] {
 }
 
 /* ========== Scrollbar ========== */
+.scroll-area {
+  scrollbar-width: none; /* Firefox：隐藏常驻滚动条，避免约 12px 内容宽度跳变 */
+}
 .scroll-area::-webkit-scrollbar {
   width: 0;
 }
