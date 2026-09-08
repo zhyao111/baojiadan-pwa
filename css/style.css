@@ -26,10 +26,13 @@
   /* PWA 补丁：--nav-height/--header-height 死变量已移除（导航高度硬编码 60px、头部用 padding 计算） */
 
   --sab: env(safe-area-inset-bottom, 0px);
-  /* 顶部安全区：JS 取 env 与兜底值的最大者写入 --sat；--sab 只由 env() 提供，JS 永不覆写
-     （此前线上版用 screen.height - innerHeight 估底部安全区，在手机浏览器里等于把
-      浏览器工具栏高度塞给了 --sab，导致导航栏下方出现大块空白——已废弃该算法） */
-  --sat-env: env(safe-area-inset-top, 0px);
+  /* 顶部与底部安全区都只由系统权威值 env() 提供，JS 永不覆写：
+     - 浏览器标签页里 env(safe-area-inset-top)=0（浏览器工具栏已在页面之上），
+       此前 JS 强制 ≥28-30px 兜底会在标题上方多出一截空白——已废弃该算法；
+     - 独立模式/刘海屏下系统会如实上报，无需任何估算；
+     - --sab 同理：任何用 screen/innerHeight 估算的写法都会把浏览器工具栏高度
+       误当安全区，导致底部导航栏下方出现大块空白。 */
+  --sat: env(safe-area-inset-top, 0px);
 
   /* Named colors — use these instead of raw hex in rulesets */
   --color-compulsory: #E8734A;
@@ -104,7 +107,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: calc(var(--sat, 28px) + 24px) 20px 14px;
+  padding: calc(var(--sat, 0px) + 24px) 20px 14px; /* PWA 补丁：兜底 28px→0px，浏览器标签页里 --sat=0 才是正确值 */
   flex-shrink: 0;
   background: var(--bg);
 }

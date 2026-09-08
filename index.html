@@ -22,23 +22,9 @@
       // 不再用 JS 把 html 高度锁成 innerHeight：手机浏览器里工具栏收展会让
       // innerHeight 忽大忽小，锁死 px 会把页面撑得比可见区域高，造成底部空白。
 
-      function computeSafeArea() {
-        var top = 0;
-        if (window.visualViewport) {
-          top = window.visualViewport.offsetTop || 0;
-        }
-        if (top <= 0) { top = Math.max(Math.round(window.innerWidth * 0.045), 30); }
-        // 独立模式（添加到主屏幕）下页面延伸到刘海后面，取 env() 与兜底值的最大者
-        var envTop = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sat-env')) || 0;
-        top = Math.max(top, envTop, 28);
-        document.documentElement.style.setProperty('--sat', top + 'px');
-        // 注意：这里绝不能写 --sab —— 底部安全区只由 CSS env(safe-area-inset-bottom)
-        // 提供，任何用 screen/innerHeight 估算的写法都会把浏览器工具栏高度误当安全区，
-        // 导致底部导航栏下方出现大块空白。
-      }
-      computeSafeArea();
-      setTimeout(computeSafeArea, 300);
-      setTimeout(computeSafeArea, 800);
+      // 顶部安全区（--sat）完全交给 CSS env(safe-area-inset-top)（见 style.css :root）：
+      // 浏览器标签页里浏览器工具栏已在页面之上，env=0 才是正确值——此前 JS 强制
+      // ≥28-30px 的兜底会在标题上方多出一截空白；独立模式系统会如实上报刘海高度。
 
       // 使用 Capacitor Keyboard 插件处理键盘（不用可选链：旧 WebKit 解析报错会废掉整个内联脚本）
       var CapacitorPlugins = window.Capacitor && window.Capacitor.Plugins;
@@ -103,17 +89,8 @@
               hiddenAtVvh = 0;
             }
           });
-          // 缩放/平移会改变 visualViewport.offsetTop（参与顶部安全区计算），同步重算纠正粘滞
-          var satTimer = null;
-          window.visualViewport.addEventListener('resize', computeSafeArea);
-          window.visualViewport.addEventListener('scroll', function() {
-            if (satTimer) return;
-            satTimer = setTimeout(function() { satTimer = null; computeSafeArea(); }, 200);
-          });
         }
       }
-
-      window.addEventListener('orientationchange', function() { setTimeout(computeSafeArea, 300); });
     })();
   </script>
 </head>
