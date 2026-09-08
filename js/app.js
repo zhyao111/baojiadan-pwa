@@ -1622,16 +1622,5 @@ document.addEventListener('DOMContentLoaded', () => {
   renderRecords();
   renderProviders();
 
-  // ====== 更新检查 ======
-  (function setupUpdate() {
-    // 启动后自动静默检查（24h 冷却）
-    if (window.Updater) window.Updater.autoCheckOnStartup();
-    // 设置 -> 检查更新 按钮
-    var btnCheckUpdate = $('#btnCheckUpdate');
-    if (btnCheckUpdate && window.Updater) {
-      btnCheckUpdate.addEventListener('click', function () {
-        window.Updater.checkUpdate({ force: true, silent: false });
-      });
-    }
-  })();
+  // （PWA 补丁：更新检查已移除——PWA 刷新页面即最新版，无需版本检查）
 });
