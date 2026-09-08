@@ -71,11 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnBackFromDualConfig = $('#btnBackFromDualConfig');
 
   // 其他
-  const confirmOverlay = $('#confirmOverlay');
-  const confirmMessage = $('#confirmMessage');
-  const confirmViewImg = $('#confirmViewImg');
-  const confirmCancel = $('#confirmCancel');
-  const confirmOk = $('#confirmOk');
+  // （PWA 补丁：confirmOverlay 系列遗留 DOM 引用已随死代码一并移除）
 
   // ====== OCR 到期时间暂存 ======
   const ocrExpiry = { compulsory: '', commercial: '', nonVehicle: '' };
@@ -502,9 +498,15 @@ document.addEventListener('DOMContentLoaded', () => {
       const results = await Promise.allSettled(
         modelsToUse.map(async ({ provider: p, model }) => {
           // 显式传模型，不修改共享 provider 的 selectedModel（避免并发竞态）
-          const result = await tryWithFailover(p, compressed, compressedBase64, file.type, model, signal);
-          completed++;
-          if (!isStale()) imgPreviewStatus.textContent = `正在识别 (${completed}/${total})...`;
+          const result = await (async () => {
+            try {
+              return await tryWithFailover(p, compressed, compressedBase64, file.type, model, signal);
+            } finally {
+              // PWA 补丁：失败/成功的模型都计入进度，避免进度停在 (1/3)
+              completed++;
+              if (!isStale()) imgPreviewStatus.textContent = `正在识别 (${completed}/${total})...`;
+            }
+          })();
           return result;
         })
       );
@@ -587,7 +589,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // 避免同提供商多模型并发时互相污染、以及失败后忘记还原的问题
     const model = modelOverride || provider.selectedModel || provider.models?.[0] || '';
     const t0 = Date.now();
-    const data = await callProviderAPI(provider, model, dataUrl, base64, mimeType, signal);
+    let data;
+    try {
+      data = await callProviderAPI(provider, model, dataUrl, base64, mimeType, signal);
+    } catch (err) {
+      // PWA 补丁：网络抖动自动重试一次（超时/用户取消/本轮已作废不重试，避免加倍等待）
+      const aborted = err.name === 'AbortError' || /超时/.test(err.message || '');
+      if (aborted || (signal && signal.aborted)) throw err;
+      data = await callProviderAPI(provider, model, dataUrl, base64, mimeType, signal);
+    }
     // PWA 补丁：上游返回空 content 时 parseOCRJson 兜底解析得到全 0/空结果，
     // 此前会被当"识别成功"并把已填好的表单清空。全空即视为识别失败。
     if (!data.company && !data.plate && !data.compulsoryAmount && !data.commercialAmount && !data.nonVehicleAmount && !data.vehicleTax) {
@@ -782,6 +792,7 @@ document.addEventListener('DOMContentLoaded', () => {
       plate: plateNumber.value || '未填写',
       time: new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }),
       ...data, ...results,
+      addInvest: (addInvest && addInvest.value || '').trim(), // PWA 补丁：记录加投值，恢复记录时可还原加投叠加层
       nonVehicleExpiry: ocrExpiry.nonVehicle,
       localImage: null,
       imageData: null,
@@ -877,14 +888,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function saveRecord(record) {
     const records = getRecords();
-    const existIdx = records.findIndex(r => r.plate === record.plate && r.company === record.company);
-    if (existIdx >= 0) {
-      // 覆盖同车牌+公司的旧记录：清理旧记录的本地图片文件，避免孤儿文件占空间
-      const old = records[existIdx];
-      if (old.localImage && old.localImage !== record.localImage) deleteLocalImage(old.localImage);
-      records[existIdx] = record;
-    } else { records.unshift(record); }
+    // PWA 补丁：公司+车牌都没填时不做覆盖去重（避免匿名记录互相顶掉），允许并存
+    const named = record.plate !== '未填写' || record.company !== '未填写';
+    const existIdx = named ? records.findIndex(r => r.plate === record.plate && r.company === record.company) : -1;
+    let old = null;
+    if (existIdx >= 0) { old = records[existIdx]; records[existIdx] = record; }
+    else { records.unshift(record); }
     localStorage.setItem(RECORDS_KEY, JSON.stringify(records));
+    // PWA 补丁：写库成功后再清理旧记录的本地图片文件，避免写库失败（配额）后记录指向已删文件
+    if (old && old.localImage && old.localImage !== record.localImage) deleteLocalImage(old.localImage);
   }
 
   function deleteRecord(id) {
@@ -935,7 +947,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="record-amount">${formatMoney(r.afterTax || 0)}</div>
         ${feeParts.length ? `<div class="record-fees">${feeHtml}</div>` : ''}
         <div class="record-bottom">
-          <button class="record-delete" data-id="${r.id}" title="删除记录">
+          <button class="record-delete" data-id="${escapeHtml(r.id)}" title="删除记录">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             删除
           </button>
@@ -1033,17 +1045,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   recordSearchInput.addEventListener('input', renderRecords);
 
-  // ====== 确认弹窗（简单场景兼容旧的 confirmOverlay DOM） ======
-  let confirmCallback = null;
-
-  confirmCancel.addEventListener('click', () => { confirmOverlay.style.display = 'none'; confirmCallback = null; });
-  confirmOk.addEventListener('click', () => {
-    confirmOverlay.style.display = 'none';
-    if (confirmCallback) { confirmCallback(); confirmCallback = null; }
-  });
-  confirmOverlay.addEventListener('click', (e) => {
-    if (e.target === confirmOverlay) { confirmOverlay.style.display = 'none'; confirmCallback = null; }
-  });
+  // （PWA 补丁：已移除遗留的 confirmOverlay 死代码——所有确认弹窗统一走 dialogs.js 的 showConfirm）
 
   // ====== 提供商管理 ======
   // 所有 provider CRUD 逻辑放在这里（量大但自成体系，暂不拆分）
@@ -1091,8 +1093,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!resp.ok) { const b = await resp.text().catch(() => ''); throw new Error(`${resp.status}: ${b.slice(0, 80)}`); }
         showToast(`${provider.name} 连接测试通过 ✓`);
       } else {
+        // OPTIONS 预检只测跨域放行，不代表业务可达；null = 网络层就不通（或被 CORS 拦截）
         const resp = await fetch(provider.baseUrl, { method: 'OPTIONS' }).catch(() => null);
-        showToast(resp?.ok ? `${provider.name} 连接测试通过 ✓` : `${provider.name} 端点可达，请上传图片测试`);
+        if (resp && resp.ok) showToast(`${provider.name} 连接测试通过 ✓`);
+        else if (resp) showToast(`${provider.name} 端点可达，请上传图片测试`);
+        else showToast(`${provider.name} 无法直连端点（可能跨域受限），请直接上传图片实测`);
       }
     } catch (err) { showToast(`${provider.name} 连接失败: ${err.message}`); }
   }

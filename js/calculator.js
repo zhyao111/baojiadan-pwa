@@ -187,6 +187,8 @@ function displayResults(results) {
 
 // ====== 格式化文案 ======
 function formatPlanText(data, results) {
+  // PWA 补丁：金额统一两位小数（与结果区 formatMoney/displayTotal 一致），避免 "1000.5元" 这类显示
+  const money = (n) => round2(Number(n) || 0).toFixed(2);
   const lines = [];
   if (data.company) lines.push(`保险公司：${data.company}`);
   if (data.plate) lines.push(`车牌号：${data.plate}`);
@@ -194,30 +196,32 @@ function formatPlanText(data, results) {
   let premium = 0;
   if (data.compulsoryAmount > 0) {
     premium += data.compulsoryAmount;
-    lines.push(`交强险保费：${data.compulsoryAmount}元，到期时间：${data.compulsoryExpiry || '未知'}`);
+    lines.push(`交强险保费：${money(data.compulsoryAmount)}元，到期时间：${data.compulsoryExpiry || '未知'}`);
   }
   if (data.commercialAmount > 0) {
     premium += data.commercialAmount;
-    lines.push(`商业险保费：${data.commercialAmount}元，到期时间：${data.commercialExpiry || '未知'}`);
+    lines.push(`商业险保费：${money(data.commercialAmount)}元，到期时间：${data.commercialExpiry || '未知'}`);
   }
   if (data.nonVehicleAmount > 0) {
     premium += data.nonVehicleAmount;
-    lines.push(`随车非车保费：${data.nonVehicleAmount}元`);
+    lines.push(`随车非车保费：${money(data.nonVehicleAmount)}元`);
   }
   if (data.vehicleTax > 0) {
     premium += data.vehicleTax;
-    lines.push(`车船税：${data.vehicleTax}元`);
+    lines.push(`车船税：${money(data.vehicleTax)}元`);
   }
 
   premium = round2(premium);
-  if (premium > 0) lines.push(`保费合计：${premium}元`);
+  if (premium > 0) lines.push(`保费合计：${money(premium)}元`);
 
   // 手续费
   const fee = round2(results.afterTax || 0);
-  if (fee > 0) lines.push(`手续费：${fee}元`);
+  if (fee > 0) lines.push(`手续费：${money(fee)}元`);
 
   if (results.afterTax > 0) {
-    lines.push(`实付为：${(premium - results.afterTax).toFixed(2)}元`);
+    // PWA 补丁：手续费异常大于保费时实付不为负（最少按 0 计）
+    const shifu = Math.max(0, round2(premium - results.afterTax));
+    lines.push(`实付为：${shifu.toFixed(2)}元`);
   }
   return lines.join('\n');
 }

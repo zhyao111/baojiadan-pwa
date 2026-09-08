@@ -1,4 +1,4 @@
-const CACHE_NAME = 'chefeibao-v13';
+const CACHE_NAME = 'chefeibao-v14';
 
 // 核心资源 — install 失败也能降级，不影响 SW 激活
 const CORE_ASSETS = [
@@ -16,6 +16,7 @@ const CORE_ASSETS = [
   './icons/icon-180.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
+  './icons/icon-maskable.png',
   './icons/icon-192.svg',
   './icons/icon-512.svg',
 ];

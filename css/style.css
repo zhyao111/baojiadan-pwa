@@ -21,10 +21,9 @@
   --border: #F5E6E0;
   --radius: 14px;
   --radius-sm: 10px;
-  --nav-height: clamp(52px, 10vw, 64px);
-  --header-height: clamp(48px, 9vw, 60px);
   --font-base: 16px;
   --font-scale: 1;
+  /* PWA 补丁：--nav-height/--header-height 死变量已移除（导航高度硬编码 60px、头部用 padding 计算） */
 
   --sab: env(safe-area-inset-bottom, 0px);
   /* 顶部安全区：JS 取 env 与兜底值的最大者写入 --sat；--sab 只由 env() 提供，JS 永不覆写
@@ -2132,7 +2131,7 @@ input[type="number"] {
   opacity: 0;
   transition: all 0.3s ease;
   pointer-events: none;
-  z-index: 999;
+  z-index: 1002; /* PWA 补丁：高于导航(999)/弹窗(1000)，不依赖 DOM 顺序 */
   white-space: nowrap;
 }
 
